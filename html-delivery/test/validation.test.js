@@ -10,10 +10,13 @@ const {
   decodeMetadataValue,
   encodeMetadataValue,
   filterGames,
+  isValidContentKey,
   normalizeCategory,
+  parseFeedbackLog,
   parseUploadLog,
   publicUrl,
   sortGames,
+  validateFeedbackInput,
   validateUploadInput,
 } = require('../server');
 
@@ -109,6 +112,37 @@ test('DRY_RUN 로그는 손상된 줄을 건너뛰고 최신순으로 파싱한�
   assert.equal(games[0].affiliation, COHORTS[1]);
   assert.equal(games[0].category, CATEGORIES[1]);
   assert.equal(games[1].category, DEFAULT_CATEGORY);
+});
+
+test('콘텐츠 key는 지정된 games 경로만 허용한다', () => {
+  assert.equal(isValidContentKey('games/20260712050607-ab12.html'), true);
+  for (const key of ['games/example.html', '../games/20260712050607-ab12.html', 'games/20260712050607-AB12.html', 'other/20260712050607-ab12.html']) {
+    assert.equal(isValidContentKey(key), false, key);
+  }
+});
+
+test('피드백은 trim하고 빈 닉네임을 익명으로 바꾼다', () => {
+  const result = validateFeedbackInput({ nickname: '  ', message: ' 좋아요! ' });
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.nickname, '익명');
+  assert.equal(result.message, '좋아요!');
+});
+
+test('빈 피드백과 501자 및 21자 닉네임은 거부한다', () => {
+  assert.equal(validateFeedbackInput({ message: '   ' }).errors[0], '피드백은 1~500자로 입력하세요.');
+  assert.equal(validateFeedbackInput({ message: '가'.repeat(501) }).errors[0], '피드백은 1~500자로 입력하세요.');
+  assert.equal(validateFeedbackInput({ nickname: '나'.repeat(21), message: 'ok' }).errors[0], '닉네임은 20자 이하로 입력하세요.');
+});
+
+test('피드백 JSONL은 key별 오래된 순이며 손상 줄을 건너뛴다', () => {
+  const key = 'games/20260712050607-ab12.html';
+  const contents = [
+    JSON.stringify({ contentKey: key, createdAt: '2026-07-12T02:00:00.000Z', nickname: '나', message: '둘' }),
+    '{broken',
+    JSON.stringify({ contentKey: 'games/20260712050607-cd34.html', createdAt: '2026-07-12T00:00:00.000Z', nickname: '타인', message: '제외' }),
+    JSON.stringify({ contentKey: key, createdAt: '2026-07-12T01:00:00.000Z', nickname: '가', message: '하나' }),
+  ].join('\n');
+  assert.deepEqual(parseFeedbackLog(contents, key).map((item) => item.message), ['하나', '둘']);
 });
 
 test('S3 모드 URL은 버킷 웹사이트 루트에 직접 연결한다', () => {

@@ -3,7 +3,10 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const express = require('express');
 const multer = require('multer');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const {
+  GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
@@ -18,6 +21,8 @@ const DEFAULT_CATEGORY = CATEGORIES[0];
 const UNKNOWN_METADATA = '알 수 없음';
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');
 const UPLOAD_LOG = path.join(__dirname, 'uploads.log.jsonl');
+const LOCAL_FEEDBACK_LOG = path.join(__dirname, '.local-feedback.jsonl');
+const CONTENT_KEY_PATTERN = /^games\/[0-9]{14}-[0-9a-f]{4}\.html$/;
 
 function validateUploadInput({ affiliation, category, name, file }) {
   const errors = [];
@@ -74,6 +79,39 @@ function filterGames(games, { cohort, category } = {}) {
     (!cohort || game.affiliation === cohort)
     && (!category || game.category === category)
   ));
+}
+
+function isValidContentKey(key) {
+  return typeof key === 'string' && CONTENT_KEY_PATTERN.test(key);
+}
+
+function validateFeedbackInput({ nickname, message }) {
+  const trimmedNickname = typeof nickname === 'string' ? nickname.trim() : '';
+  const trimmedMessage = typeof message === 'string' ? message.trim() : '';
+  const errors = [];
+  if (!trimmedMessage || trimmedMessage.length > 500) errors.push('피드백은 1~500자로 입력하세요.');
+  if (trimmedNickname.length > 20) errors.push('닉네임은 20자 이하로 입력하세요.');
+  return { errors, nickname: trimmedNickname || '익명', message: trimmedMessage };
+}
+
+function parseFeedbackLog(contents, key) {
+  return contents.split('\n').filter(Boolean).flatMap((line) => {
+    try {
+      const entry = JSON.parse(line);
+      return entry.contentKey === key ? [entry] : [];
+    } catch {
+      return [];
+    }
+  }).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function requestBaseUrl(req) {
+  const protocol = req.get('x-forwarded-proto') || req.protocol;
+  return `${protocol}://${req.get('host')}`;
+}
+
+function viewerUrl(req, key) {
+  return `${requestBaseUrl(req)}/view.html?key=${encodeURIComponent(key)}`;
 }
 
 function sortGames(games) {
@@ -195,9 +233,46 @@ async function storeUpload({ key, buffer, affiliation, category, name, uploadedA
   }
 }
 
+async function getContent(key) {
+  if (!process.env.S3_BUCKET) return fs.readFile(path.join(LOCAL_DEPLOY_DIR, key));
+  const client = new S3Client({ region: process.env.S3_REGION || 'ap-northeast-2' });
+  const response = await client.send(new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }));
+  if (!response.Body) throw Object.assign(new Error('콘텐츠 본문이 없습니다.'), { code: 'NoSuchKey' });
+  return Buffer.from(await response.Body.transformToByteArray());
+}
+
+async function saveFeedback(entry) {
+  if (!process.env.FEEDBACK_TABLE) {
+    await fs.appendFile(LOCAL_FEEDBACK_LOG, `${JSON.stringify(entry)}\n`, 'utf8');
+    return;
+  }
+  const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.S3_REGION || 'ap-northeast-2' }));
+  await client.send(new PutCommand({ TableName: process.env.FEEDBACK_TABLE, Item: entry }));
+}
+
+async function listFeedback(key) {
+  if (!process.env.FEEDBACK_TABLE) {
+    try {
+      return parseFeedbackLog(await fs.readFile(LOCAL_FEEDBACK_LOG, 'utf8'), key);
+    } catch (error) {
+      if (error.code === 'ENOENT') return [];
+      throw error;
+    }
+  }
+  const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.S3_REGION || 'ap-northeast-2' }));
+  const response = await client.send(new QueryCommand({
+    TableName: process.env.FEEDBACK_TABLE,
+    KeyConditionExpression: 'contentKey = :key',
+    ExpressionAttributeValues: { ':key': key },
+    ScanIndexForward: true,
+  }));
+  return response.Items || [];
+}
+
 function createApp() {
   const app = express();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
+  app.use(express.json({ limit: '16kb' }));
   app.use(express.static(path.join(__dirname, 'public')));
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.get('/api/cohorts', (_req, res) => res.json({ cohorts: COHORTS }));
@@ -206,6 +281,43 @@ function createApp() {
     try {
       const games = await listGames();
       return res.json({ games: filterGames(games, req.query) });
+    } catch (error) {
+      return next(error);
+    }
+  });
+  app.get('/play/*splat', async (req, res, next) => {
+    const key = Array.isArray(req.params.splat) ? req.params.splat.join('/') : req.params.splat;
+    if (!isValidContentKey(key)) return res.sendStatus(404);
+    try {
+      return res.type('html').send(await getContent(key));
+    } catch (error) {
+      if (error.code === 'ENOENT' || error.code === 'NoSuchKey' || error.name === 'NoSuchKey') return res.sendStatus(404);
+      return next(error);
+    }
+  });
+  app.get('/api/feedback', async (req, res, next) => {
+    const { key } = req.query;
+    if (!isValidContentKey(key)) return res.sendStatus(404);
+    try {
+      return res.json({ feedback: await listFeedback(key) });
+    } catch (error) {
+      return next(error);
+    }
+  });
+  app.post('/api/feedback', async (req, res, next) => {
+    const { key } = req.body || {};
+    if (!isValidContentKey(key)) return res.sendStatus(404);
+    const result = validateFeedbackInput(req.body || {});
+    if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
+    const entry = {
+      contentKey: key,
+      createdAt: new Date().toISOString(),
+      nickname: result.nickname,
+      message: result.message,
+    };
+    try {
+      await saveFeedback(entry);
+      return res.status(201).json({ feedback: entry });
     } catch (error) {
       return next(error);
     }
@@ -236,7 +348,13 @@ function createApp() {
         name: result.name,
         uploadedAt,
       });
-      return res.status(201).json({ url: publicUrl(key), key, uploadedAt });
+      const directUrl = publicUrl(key);
+      return res.status(201).json({
+        url: viewerUrl(req, key),
+        directUrl,
+        key,
+        uploadedAt,
+      });
     } catch (error) { return next(error); }
   });
   app.use((error, _req, res, _next) => {
@@ -252,6 +370,7 @@ if (require.main === module) createApp().listen(PORT, () => console.log(`html-de
 module.exports = {
   CATEGORIES,
   COHORTS,
+  CONTENT_KEY_PATTERN,
   DEFAULT_CATEGORY,
   MAX_FILE_SIZE,
   UNKNOWN_METADATA,
@@ -260,9 +379,13 @@ module.exports = {
   decodeMetadataValue,
   encodeMetadataValue,
   filterGames,
+  isValidContentKey,
   normalizeCategory,
+  parseFeedbackLog,
   parseUploadLog,
   publicUrl,
   sortGames,
+  validateFeedbackInput,
   validateUploadInput,
+  viewerUrl,
 };
