@@ -454,3 +454,26 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/004 수행 → 검증자: tfvars에 안전 서브넷 지정 후 재apply → E2E 재검증
+
+---
+
+## 2026-07-12 16:15 KST — claude (Planner) — Lambda 전환 결정, WO-004 폐기, WO-005 발행
+
+### Intent
+- 사용자 비용 최적화 결정(EC2→Lambda) 반영
+
+### Files changed
+- docs/planning/DECISIONS.md — Lambda 전환 결정
+- .agent/work-orders/WO-004-subnet-variable.md — 폐기 (착수 전, 코드 변경 없음)
+- .agent/work-orders/WO-005-lambda-migration.md — 신규 발행
+
+### Commands / verification
+- 없음 (문서 턴). 참고: 직전 턴에서 wo/004 브랜치를 WO 파일 커밋 전에 만들어 Hermes가
+  파일을 못 찾고 대기하는 실수가 있었음 — WO-005는 커밋·푸시 후 브랜치 생성 순서 준수
+
+### Decisions / assumptions
+- WO-004는 Lambda 전환으로 무의미 — 착수 전 폐기가 총비용 최소
+- 프로세스 규칙 확립: **WO 브랜치는 반드시 WO 파일이 main에 커밋된 후 생성**
+
+### Handoff
+- Hermes: wo/005에서 WO-005 수행

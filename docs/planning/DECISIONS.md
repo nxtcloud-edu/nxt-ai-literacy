@@ -10,3 +10,4 @@
 | 2026-07-12 | html-delivery 배포 인프라 = **AWS S3 정적 호스팅** (CloudFront 선택) | 사용자 확정. nxtcloud AWS 교육 맥락과 일치, 업로드 즉시 정적 웹사이트 URL 발급 가능 |
 | 2026-07-12 | html-delivery 운영 = **Express on EC2**, 리전 = **서울(ap-northeast-2)**, S3는 **단일 버킷 + 업로드당 객체 1개**(`games/{timestamp}-{rand}.html`) | 사용자 확정. 실유저 트래픽은 S3 정적 호스팅이 직접 서빙 — Express는 업로드 중개만 (앱이 꺼져도 배포된 게임 URL은 유지) |
 | 2026-07-12 | AWS 인프라는 **Terraform**으로 관리 (EC2 신규 생성 + S3 + IAM), AWS 프로필은 **default** | 사용자 확정. provision-s3.sh(aws CLI)는 Terraform으로 대체 — IaC 단일 SSOT. terraform apply는 검증자/사용자만 수행 (코더 클라우드 금지 유지) |
+| 2026-07-12 | 업로드 앱 운영을 **EC2 → Lambda Function URL**로 전환 (비용 최적화) | 사용자 확정 — "가장 비용효율적인 환경". 수업 시간에만 트래픽이 있는 버스트 패턴이라 유휴 비용 제로의 Lambda가 최적 (사실상 $0/월, HTTPS 기본). EC2·SG·인스턴스 프로파일은 제거, WO-004(서브넷 변수화)는 발행 직후 폐기 |
