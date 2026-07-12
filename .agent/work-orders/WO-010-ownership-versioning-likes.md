@@ -1,5 +1,5 @@
 # WO-010: 소유권+버전 관리 및 추천 기능
-상태: 검증 대기
+상태: 완료 (2026-07-12, 검증자 Claude — 기능 실측 전 통과 + security-reviewer 병렬 리뷰: 차단급 없음, M급은 WO-011 하드닝으로 즉시 환류)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/010` 브랜치 (README 규칙)
 
