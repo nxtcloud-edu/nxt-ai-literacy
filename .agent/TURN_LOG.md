@@ -835,3 +835,21 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - 상태: 검증 대기
 - Claude가 6개 목적 커밋과 프로덕션 HTTPS 프록시·DynamoDB E2E를 재검증
+
+---
+
+## 2026-07-12 19:05 KST — claude (Planner/Verifier) — WO-009 검증·배포·프로덕션 E2E 완료
+
+### Commands / verification
+- 코드 검토: key 정규식 3중 검증, 피드백 검증, XSS-safe 렌더링(textContent), DynamoDB 최소 IAM
+- npm test 19/19 독립 재실행, DRY_RUN 전 동선(업로드→뷰어 URL→/play 200→피드백 201·조회→
+  잘못된 key 404→501자 400), 브라우저 뷰어 실측(iframe 게임 로드·피드백 패널)
+- merge wo/009 → npm install --omit=dev → plan(2 add/1 change) → apply — DynamoDB nxt-edu-feedback 생성
+- 프로덕션 E2E: 업로드 → 뷰어 URL(HTTPS) 발급 → /play 프록시 200 → 피드백 등록 201 →
+  DynamoDB 조회 정상 (한지우/첫유저 샘플)
+
+### Decisions / assumptions
+- 발급 url=뷰어, directUrl=S3 직링크로 이원화 — 공유는 뷰어 URL 기준
+
+### Handoff
+- 사용자 최종 UX 확인 대기. 남은 백로그: 기존 시딩 6건의 피드백 샘플(선택)
