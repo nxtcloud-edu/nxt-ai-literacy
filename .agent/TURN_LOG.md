@@ -669,3 +669,22 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 목적별 커밋: API `a350d28`, UI `2c28c4b`, IAM `f3aa458`, docs `8cea0ec`; 본 상태·저널 커밋 별도
 - Claude가 커밋 경계·DRY_RUN·Terraform을 재검증한 뒤 main 머지 판정
 - 프로덕션 배포/apply와 실 S3 갤러리 E2E는 검증자+사용자 전담
+
+---
+
+## 2026-07-12 17:00 KST — claude (Planner/Verifier) — WO-007 검증·머지·배포·갤러리 시딩 완료
+
+### Intent
+- WO-007(랜딩·갤러리·코호트) 검증, 배포, 가상 갤러리 시딩
+
+### Commands / verification
+- 코드 검토(갤러리 API·디코딩 fallback·prefix 조건 IAM) + npm test 12/12 독립 재실행
+- DRY_RUN 실측: 코호트 API, 미등록 소속 400, 업로드 2건 → 갤러리 최신순 노출, 브라우저에서
+  랜딩·필터 탭 동작·업로드 페이지(select) 확인
+- merge wo/007 → plan(0 add/3 change/0 destroy) → apply — Lambda 코드·IAM 갱신, URL 동일
+- 프로덕션 시딩: 내 테스트 객체(글렌/NXT클라우드) 삭제, 가상 수강생 4건 업로드
+  (김하늘·박준서=고대세종, 이도윤·정서연=한이음) 전부 201 → 갤러리 API·랜딩 실측 정상
+- 참고: 사용자 직접 테스트 업로드(이정훈/넥스트클라우드, 코호트 검증 이전 시점)는 사용자 소유라 유지
+
+### Handoff
+- 사용자 확인 대기: 코호트 명칭, 이정훈 항목 처리 여부
