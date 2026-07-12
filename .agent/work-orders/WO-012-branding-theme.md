@@ -1,5 +1,5 @@
 # WO-012: nxtcloud 로고 적용 + 라이트/다크 테마 토글 (기본 라이트)
-상태: 대기
+상태: 검증 대기
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/012` 브랜치 (README 규칙)
 

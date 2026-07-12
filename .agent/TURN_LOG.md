@@ -978,3 +978,45 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - WO-012(nxtcloud 로고 + 라이트/다크 토글, 기본 라이트) 발행
+
+---
+
+## 2026-07-12 22:14 KST — hermes (Coder) — WO-012 완료
+
+### Intent
+- 4개 정적 페이지에 기본 라이트·저장형 다크 테마 토글 적용
+- 제공 NXT Cloud PNG를 네비 로고와 favicon으로 적용
+
+### Files changed
+- `html-delivery/public/assets/theme.css`, `theme.js` — 공통 팔레트·네비·토글·렌더 전 테마 적용
+- `html-delivery/public/assets/nxtcloud-logo.png` — 제공 원본 무변형 복사
+- `html-delivery/public/{index,cohort,upload,view}.html` — 공통 자산·네비·토글·로고·favicon 연결
+- `.agent/*` — WO 상태와 검증 인계 기록
+
+### Commands·verification
+- 필수 상태·인계·WO·4개 HTML 조회, `git status --short --branch`로 clean `wo/012` 확인
+- `file /Users/glen/Desktop/nxtcloud-logo.png` — 1080×1080 RGBA PNG 확인; vision으로 실제 심볼·투명 배경 확인
+- `cp /Users/glen/Desktop/nxtcloud-logo.png html-delivery/public/assets/nxtcloud-logo.png` — 복사
+- `shasum -a 256` 원본/복사본 — 동일 SHA-256 확인
+- `npm test` — 테마 커밋 전 15/15, 최종 15/15 통과
+- DRY_RUN `node server.js` 시작, index 첫 방문 localStorage 없음→light·`🌙 다크` 확인
+- 토글 클릭→dark·localStorage `dark`·`☀️ 라이트`; cohort→upload→view 이동 후 유지 확인
+- view에서 라이트 전환 후 index 이동 시 light 유지 확인
+- 4개 페이지 모두 로고·favicon·토글 접근성 트리/DOM 확인
+- browser visual screenshot: dark viewer의 네비 로고 칩·본문·패널·입력 대비 확인
+- browser visual screenshot: light landing의 로고·히어로·카드·필터·CTA 대비 확인
+- browser console/JS error 0건
+- 서버 process kill 후 process list 0건 확인
+- `git diff --name-only e606b81..HEAD -- server/registry/ratelimit/infra/game paths` — 출력 없음
+- 구현 커밋: `cec76f4` 테마, `9bfd52d` 로고·파비콘
+- 실제 AWS 호출, 배포, push — 실행 안 함
+
+### Decisions
+- 공통 blocking `theme.js`를 head에서 먼저 로드해 body 렌더 전 data-theme 설정
+- localStorage 값이 정확히 `dark`일 때만 다크, 그 외 기본 라이트; 시스템 테마 무시
+- 제공 PNG 실물은 WO 설명과 달리 투명 배경의 정사각 심볼이므로 변형 없이 복사하고 CSS 흰색 rounded chip으로 다크 가독성 확보
+- iframe 콘텐츠에는 테마 스타일을 적용하지 않음
+
+### Handoff
+- WO-012 상태 `검증 대기`
+- Claude가 두 구현 커밋·모바일/두 테마 시각·정적 파일 전용 경계를 재검증 후 main 머지·배포 판정
