@@ -901,3 +901,20 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - 상태: 검증 대기
 - 검증자는 재시딩 후 프로덕션 v1/v2·추천·정렬을 확인
+
+---
+
+## 2026-07-12 20:10 KST — claude (Planner/Verifier) — WO-010 검증·배포·재시딩 완료 (보안 리뷰 병행)
+
+### Commands / verification
+- 기능 실측(DRY_RUN): v1 업로드→추천 2회→맞는 비번 재업로드 v2(contentId·뷰어 URL 불변)→
+  틀린 비번 403→추천순 정렬→평문 비번 잔존 없음. npm test 9/9. 브라우저: v2 서빙·추천 버튼·버전 표기
+- security-reviewer 에이전트 병렬 리뷰: CRITICAL/HIGH 없음. scrypt+salt+timingSafeEqual·
+  응답 필드 스트리핑·contentId 서버 결정(소유권 우회 불가)·정규식 앵커·파라미터화·XSS 없음 확인
+- 이슈 처분: M-1 추천 남용·M-2 피드백 스팸·L-2 iframe sandbox → WO-011 하드닝 발행,
+  M-3 이름 선점 = 수용 리스크(수업 오프라인 해결), L-1 like 유실 → WO-011 포함, L-3 헤더 = 백로그
+- merge → apply(3 change) → 재시딩 6건(랜덤 일회용 비번, 추천 1~7·피드백 3건) → 추천순 정렬 실측
+- 고아 객체 5건(검증자 시딩분) 삭제, 사용자 추정 2건(55fc·eddb) 보존
+
+### Handoff
+- WO-011(보안 하드닝) → WO-012(로고·테마 토글) 순차 발행
