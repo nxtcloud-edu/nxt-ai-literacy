@@ -477,3 +477,61 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/005에서 WO-005 수행
+
+
+---
+
+## 2026-07-12 15:59 KST — hermes (Coder) — WO-005
+
+### Intent
+- 유휴 EC2 업로드 앱을 Lambda Function URL로 전환하고 S3 정적 게임 서빙은 유지
+- 앱·인프라·문서 변경을 목적별 커밋으로 분리해 WO-003 환류 준수
+
+### Files changed
+- `html-delivery/lambda.js` — `serverless-http`로 기존 `createApp()`을 감싼 Lambda handler 추가
+- `html-delivery/package.json`, `package-lock.json` — `serverless-http` 의존성 추가
+- `html-delivery/test/lambda.test.js` — handler function export 스모크 테스트 추가
+- `html-delivery/server.js` — S3 업로드 후 파일 로그 append 실패를 경고만 남기고 비차단 처리; 로컬 DRY_RUN 동작 유지
+- `infra/main.tf` — EC2·SG·VPC/subnet data·instance profile·SSM 제거, archive_file·Lambda·Function URL·Lambda IAM 추가
+- `infra/versions.tf`, `.terraform.lock.hcl` — archive provider 추가·고정
+- `infra/variables.tf`, `outputs.tf`, `terraform.tfvars.example` — EC2 변수/output 제거, Function URL output 반영
+- `.gitignore` — 생성 Lambda ZIP 제외
+- `html-delivery/README.md`, `infra/README.md` — Lambda 운영 및 apply 전 `npm install --omit=dev` 절차 반영
+- `.agent/work-orders/WO-005-lambda-migration.md` — 상태를 `검증 대기`로 변경
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md` — WO-005 구현·검증·실배포 인계 상태 반영
+- `.agent/TURN_LOG.md` — 본 완료 기록 추가
+
+### Commands / verification
+- `git status --short --branch && git log -4 --oneline --decorate && git rev-parse --abbrev-ref HEAD && git worktree list` — clean `wo/005`, main과 HEAD `4ee63ea` 일치 확인
+- `read_file` — AGENTS, CURRENT_STATE, HANDOFF, WO-005, work-order README, server/package/infra/README/DECISIONS 확인
+- 최초 `npm install serverless-http && npm test && node -e ... && git diff --check` — 안전 게이트에서 차단, 실행 안 됨
+- 사용자 승인 후 단독 `npm install serverless-http` — 1 package 추가, 취약점 0건
+- `npm test` — 기존 7건 통과
+- `node -e` handler 확인 — 안전 게이트에서 차단, 실행 안 됨; 사용자 지시로 영구 스모크 테스트로 대체
+- `test/lambda.test.js` 추가 후 `npm test` — 8건 모두 통과
+- 앱 커밋 `2627b13 feat: Lambda 앱 어댑터 추가` — Lambda adapter·의존성·로그 비차단·스모크 테스트만 포함
+- `terraform -chdir=infra init -backend=false` — archive v2.8.0 설치, AWS v5.100.0 재사용, 초기화 성공
+- `terraform fmt -recursive infra` 및 `terraform -chdir=infra fmt -check` — 통과
+- `terraform -chdir=infra validate` — `Success! The configuration is valid.`
+- `search_files` — 추적 infra 소스에서 EC2·SG·instance profile·SSM·AMI/VPC/subnet data·EC2 변수/output 잔존 0건; Lambda 구성 12개 핵심 참조 확인
+- 인프라 커밋 `c0464bf feat: 업로드 인프라를 Lambda로 전환` — infra와 ZIP ignore만 포함
+- README stale EC2 표현 검사 및 `git diff --check` — 통과
+- 문서 커밋 `d2a7932 docs: Lambda 운영 절차 정리` — README 2종만 포함
+- 최종 `npm test` — 8건 모두 통과
+- 최종 `terraform -chdir=infra fmt -check && terraform -chdir=infra validate` — 통과
+- ignored `.terraform/` 포함 재귀 grep에서 provider 바이너리 문자열 1건이 표시됐으나, 추적 Terraform 소스 `search_files` 결과는 EC2 잔존 0건
+- 최초 금지 파일 확인 명령이 기존 추적 게임 파일 자체를 표시했으나, `git diff --name-only 4ee63ea..HEAD` 기준 `box-game/`·`run-game/`·state·plan·zip 변경 0건 확인
+- `terraform plan`, `terraform apply`, `aws` CLI, AWS 자격 파일 읽기, 클라우드 배포 — 실행 안 함; WO-005 금지 범위
+
+### Decisions / assumptions
+- WO 명세 충돌에 대해 사용자 확인: `server.js` 수정 금지보다 설계 결정 5의 S3 로그 실패 비차단 요구가 우선하며, S3 모드에만 최소 try/catch 적용
+- 사용자 지시에 따라 `lambda.js` handler 검증은 일회성 `node -e` 대신 저장소에 남는 `node:test` 스모크 테스트로 구현
+- `archive_file`은 `node_modules`를 포함하고 test·`.env*`·로컬 배포·로그·scripts를 제외; apply 전 운영 의존성 설치가 필수
+- Function URL은 제품 결정에 따라 인증 없음이며 API Gateway·CloudFront·커스텀 도메인은 추가하지 않음
+- S3 객체 Metadata를 소속·이름 영구 기록으로 유지하고 Lambda 로컬 파일 로그는 비권위적 기록으로 취급
+
+### Handoff
+- WO-005 상태를 `검증 대기`로 전환
+- 목적별 커밋 3개(앱 `2627b13`, 인프라 `c0464bf`, 문서 `d2a7932`)와 본 상태·저널 커밋으로 완료 신호 구성
+- Claude가 커밋 경계와 Terraform/Lambda 구성을 재검증한 후 main 머지 여부를 판정
+- 실배포 시 검증자/사용자가 `html-delivery`에서 `npm install --omit=dev` 후 Terraform apply 및 Function URL health/upload/S3 URL을 검증
