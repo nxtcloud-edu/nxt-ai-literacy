@@ -1079,3 +1079,31 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-013 상태 `검증 대기`
 - Claude가 3개 커밋과 UI를 재검증하고, 배포 후 프로덕션 PNG 응답 md5를 원본과 대조
+
+---
+
+## 2026-07-13 08:48 KST — hermes (Coder) — WO-014 완료
+
+### Intent
+- 손상된 로고 응답의 기존 브라우저 캐시를 우회하도록 로고 URL 버전 변경
+
+### Files changed
+- `html-delivery/public/{index,cohort,upload,view}.html` — logo img·favicon URL에 `?v=2`
+- `.agent/*` — WO 상태와 단일 목적 검증 인계 기록
+
+### Commands·verification
+- 필수 상태·인계·WO·README·GOTCHAS 조회, `git status --short --branch`로 clean `wo/014` 확인
+- 변경 전 logo img·favicon 참조 8건 확인
+- 변경 후 `/assets/nxtcloud-logo.png?v=2` 8건, 무버전 참조 0건 확인
+- 최초 무버전 negative 검색에서 rg look-around 미지원 오류; 단순 종결 quote 패턴으로 재검증해 0건
+- `git diff --check` — 통과
+- `npm test` — 16/16 통과
+- 실제 배포, 프로덕션 접속, push — 실행 안 함
+
+### Decisions
+- GOTCHAS의 ETag 304 근본 원인에 따라 파일·캐시 헤더를 건드리지 않고 URL 키만 `?v=2`로 변경
+- WO 요구대로 한 가지 목적 커밋 1개에 제품 diff와 필수 저널 인계를 함께 기록
+
+### Handoff
+- WO-014 상태 `검증 대기`
+- Claude가 4개 HTML의 URL-only diff를 재검증하고 배포 후 기존 브라우저의 새 URL 요청을 확인
