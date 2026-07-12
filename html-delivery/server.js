@@ -5,7 +5,7 @@ const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
-const { findByIdentity, getContent: getRegisteredContent, hashPassword, incrementLike, listContents, newContentId, saveRegistryItem, verifyPassword } = require('./registry');
+const { findByIdentity, getContent: getRegisteredContent, hashPassword, incrementLike, listContents, newContentId, saveRegistryItem, updateRegistryVersion, verifyPassword } = require('./registry');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
 const PORT = Number(process.env.PORT || 3210);
@@ -167,7 +167,8 @@ function createApp() {
         createdAt2: existing?.createdAt2 || uploadedAt, updatedAt: uploadedAt,
       };
       await storeObject(key, req.file.buffer, { contentid: contentId, version: String(version) });
-      await saveRegistryItem(item);
+      if (existing) await updateRegistryVersion(contentId, { latestVersion: version, latestKey: key, updatedAt: uploadedAt });
+      else await saveRegistryItem(item);
       return res.status(201).json({ url: viewerUrl(req, contentId), directUrl: publicUrl(key), contentId, version, uploadedAt });
     } catch (error) { return next(error); }
   });

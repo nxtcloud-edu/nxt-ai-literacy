@@ -81,6 +81,32 @@ async function saveRegistryItem(item) {
   await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
 }
 
+function mergeVersionFields(item, { latestVersion, latestKey, updatedAt }) {
+  return { ...item, latestVersion, latestKey, updatedAt };
+}
+
+async function updateRegistryVersion(contentId, fields) {
+  if (!TABLE_NAME) {
+    const registry = await readLocalRegistry();
+    if (!registry[contentId]) return false;
+    registry[contentId] = mergeVersionFields(registry[contentId], fields);
+    await writeLocalRegistry(registry);
+    return true;
+  }
+  await documentClient().send(new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
+    UpdateExpression: 'SET latestVersion = :version, latestKey = :key, updatedAt = :updatedAt',
+    ExpressionAttributeValues: {
+      ':version': fields.latestVersion,
+      ':key': fields.latestKey,
+      ':updatedAt': fields.updatedAt,
+    },
+    ConditionExpression: 'attribute_exists(contentKey)',
+  }));
+  return true;
+}
+
 async function incrementLike(contentId) {
   if (!TABLE_NAME) {
     const registry = await readLocalRegistry();
@@ -106,4 +132,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { LOCAL_REGISTRY, findByIdentity, getContent, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, publicContent, saveRegistryItem, verifyPassword };
+module.exports = { LOCAL_REGISTRY, findByIdentity, getContent, getRegistryItem, hashPassword, incrementLike, listContents, mergeVersionFields, newContentId, publicContent, saveRegistryItem, updateRegistryVersion, verifyPassword };

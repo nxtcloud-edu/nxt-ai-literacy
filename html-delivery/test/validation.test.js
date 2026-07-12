@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const { hashPassword, newContentId, publicContent, verifyPassword } = require('../registry');
+const { hashPassword, mergeVersionFields, newContentId, publicContent, verifyPassword } = require('../registry');
 const { CATEGORIES, COHORTS, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
 
 const htmlFile = { originalname: 'content.html', size: 100 };
@@ -35,6 +35,12 @@ test('scrypt 해시는 랜덤 salt를 사용하고 timing-safe 검증한다', ()
 test('공개 콘텐츠에서 해시와 salt 및 Dynamo 키를 제거한다', () => {
   const content = publicContent({ contentKey: 'content#12345678', createdAt: 'meta', contentId: '12345678', passwordHash: 'hash', salt: 'salt', name: '작품' });
   assert.deepEqual(content, { contentId: '12345678', name: '작품' });
+});
+
+test('버전 부분 갱신은 추천 수와 소유권 필드를 보존한다', () => {
+  const previous = { contentId: '12345678', likes: 7, passwordHash: 'hash', salt: 'salt', latestVersion: 1, latestKey: 'games/12345678-v1.html', updatedAt: 'old' };
+  const updated = mergeVersionFields(previous, { latestVersion: 2, latestKey: 'games/12345678-v2.html', updatedAt: 'new' });
+  assert.deepEqual(updated, { ...previous, latestVersion: 2, latestKey: 'games/12345678-v2.html', updatedAt: 'new' });
 });
 
 test('contentId와 버전 key 계약을 지킨다', () => {
