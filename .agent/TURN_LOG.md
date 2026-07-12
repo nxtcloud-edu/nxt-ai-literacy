@@ -963,3 +963,18 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-011 상태 `검증 대기`
 - Claude가 3개 구현 커밋과 DRY_RUN/Terraform 근거를 독립 재검증 후 main 머지·배포 판정
+
+---
+
+## 2026-07-12 21:55 KST — claude (Planner/Verifier) — WO-011 검증·배포 완료
+
+### Commands / verification
+- npm test 15/15, DRY_RUN: like 4연타→429, feedback 6연타→5×201+429, 버전업 후 likes 3 보존,
+  /play 404. (참고: 첫 feedback 404는 내 호출 실수 — WO-010에서 계약이 contentId/?id=로 변경됨)
+- 발견·수정: WO-010 재시딩 때 피드백 3건이 구계약(key) 호출이라 실제로는 404로 유실됐었음 —
+  상태 코드를 버리고 시딩한 내 실수. 올바른 계약으로 재시딩 완료(3×201). 교훈: 시딩도 상태 검증 필수
+- merge → apply(1 change/1 destroy — 웹사이트 설정 제거) → 프로덕션: contentUrl이 S3 REST https,
+  직접 렌더 200 text/html, 뷰어 크로스 오리진 iframe 렌더 확인, like 4연타 429 실측
+
+### Handoff
+- WO-012(nxtcloud 로고 + 라이트/다크 토글, 기본 라이트) 발행
