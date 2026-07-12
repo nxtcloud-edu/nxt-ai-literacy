@@ -1,4 +1,5 @@
 .agent-coder-guard
+.DS_Store
 
 # html-delivery local runtime data
 html-delivery/.env
