@@ -188,3 +188,89 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/002에서 수정 2건(+선택 1건) 반영, 완료 헤더 재기록 + 커밋
+## 2026-07-12 15:08 KST — hermes (Coder) — WO-002
+
+### Intent
+- `html-delivery/`에 Express 기반 HTML 게임 업로드·DRY_RUN 배포 운영 프로그램 구현
+
+### Files changed
+- `html-delivery/package.json`, `package-lock.json` — Express·Multer·AWS S3 SDK 의존성 및 npm 명령 정의
+- `html-delivery/server.js` — health/upload API, 입력 검증, 로컬 DRY_RUN 저장·서빙, S3 코드 경로, JSONL 기록
+- `html-delivery/public/index.html` — 한국어 다크 톤 업로드 폼과 발급 URL/복사 UI
+- `html-delivery/test/validation.test.js` — 순수 입력 검증 단위 테스트 5건
+- `html-delivery/.env.example`, `README.md`, `scripts/provision-s3.sh` — 운영 설정·문서·프로비저닝 스크립트 작성(스크립트 실행 안 함)
+- `.gitignore` — `.env`, `.local-deploy/`, `uploads.log.jsonl`, `node_modules/` 무시 규칙 추가
+- `.agent/work-orders/WO-002-html-delivery.md` — 상태를 `검증 대기`로 변경
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md` — WO-002 구현·검증 상태 반영
+- `.agent/TURN_LOG.md` — 본 완료 기록 추가
+
+### Commands / verification
+- `git status --short --branch && git log -3 --oneline --decorate && git rev-parse --abbrev-ref HEAD && git worktree list` — main과 `wo/002`가 `8b94966`에서 일치, 현재 브랜치 `wo/002` 확인
+- `node --version && npm --version` — Node `v22.14.0`, npm `11.17.0`
+- `npm install` — 108 packages 설치, 취약점 0건
+- `npm test` — 초기 단위 테스트 5건 모두 통과
+- `chmod +x scripts/provision-s3.sh` — 실행 권한 설정
+- `PORT=3210 S3_BUCKET= node server.js` — DRY_RUN 서버 기동
+- `curl /api/health` — HTTP 200, `{"ok":true}`
+- 성공 multipart `curl /api/upload` — HTTP 201, ASCII key와 URL 발급 확인
+- 비HTML multipart `curl /api/upload` — HTTP 400, `HTML 파일만 업로드할 수 있습니다.`
+- 1MB 초과 multipart `curl /api/upload` — HTTP 413, `파일 크기는 1MB 이하여야 합니다.`
+- 필드 누락 multipart `curl /api/upload` — HTTP 400, 소속·이름 검증 메시지
+- 첫 발급 URL 접속 후처리 — curl 응답의 CRLF 가정 오류로 URL 추출 단계 실패; 원 요청 응답은 성공 확인
+- 첫 발급 URL 접속 — HTTP 500 확인; 저장 파일·경로는 존재했고 Express `sendFile` 경로를 `fs.readFile` 응답으로 수정
+- 수정 후 성공 multipart `curl /api/upload` + 발급 URL `curl` — HTTP 201 후 배포 URL HTTP 200, 4976 bytes, 원본 `<title>달리기 게임</title>` 및 `CONFIG` 포함 확인
+- `npm test` 재실행 — 5건 모두 통과
+- `bash -n scripts/provision-s3.sh` — 통과; AWS CLI/프로비저닝 스크립트는 실행 안 함
+- `git diff --check` — 통과
+- 서버 프로세스 종료 — 포트 3210 정리
+- 전체 테스트 스위트/실 S3 호출/버킷 생성/AWS 자격 파일 읽기: 실행 안 함 — WO-002 금지 범위
+
+### Decisions / assumptions
+- `S3_BUCKET` 미설정 시 로컬 `.local-deploy/`와 `/deployed/{key}`로 완결되는 DRY_RUN을 기본으로 유지
+- 파일 원문은 변조하지 않고 `text/html; charset=utf-8`로 저장·서빙
+- S3 프로비저닝 스크립트는 작성만 하고 실행하지 않음
+- 브라우저 UI는 API 클라이언트로만 제공하고 인증·목록·삭제 기능은 추가하지 않음
+
+### Handoff
+- WO-002 상태를 `검증 대기`로 전환
+- 현재 브랜치 `wo/002`에서 구현·검증 기록을 타입 접두사 한글 커밋에 포함
+- Claude가 DRY_RUN 실측 검증 후 main 머지 여부를 판정
+
+
+---
+
+## 2026-07-12 15:13 KST — hermes (Coder) — WO-002
+
+### Intent
+- WO-002 1차 검증 반려 사유 2건 수정: S3 Metadata ASCII 인코딩과 신규 버킷 BPA 해제 순서 보완
+- 선택 개선: 존재하지 않는 `/deployed` key를 HTTP 404로 응답
+
+### Files changed
+- `html-delivery/server.js` — `encodeMetadataValue()` 추가, S3 `affiliation`·`name` Metadata를 `encodeURIComponent`로 인코딩, 로컬 미존재 파일 ENOENT를 404로 처리
+- `html-delivery/scripts/provision-s3.sh` — `put-public-access-block`을 `put-bucket-policy` 앞에 추가하고 4개 플래그를 false로 설정
+- `html-delivery/README.md` — Metadata 디코딩 시 `decodeURIComponent` 사용 안내 추가
+- `html-delivery/test/validation.test.js` — 한글·공백·슬래시 Metadata URI 인코딩 회귀 테스트 추가(총 6건)
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md` — 반려 수정 및 재검증 대기 상태 반영
+- `.agent/TURN_LOG.md` — 본 수정 완료 기록 추가
+
+### Commands / verification
+- `git status --short --branch && git log -2 --oneline --decorate` — clean `wo/002`, HEAD `ad4b791` 확인
+- 관련 `read_file` — HANDOFF, CURRENT_STATE, server.js, provision-s3.sh, README.md 확인
+- `git diff --check` — 수정 전후 통과
+- `npm test` — 수정 후 6건 모두 통과
+- `bash -n scripts/provision-s3.sh` — 통과; AWS CLI/프로비저닝 스크립트는 실행 안 함
+- `grep` — `put-public-access-block`이 `put-bucket-policy` 앞에 있고 4개 BPA 플래그가 false인지 확인
+- `PORT=3210 S3_BUCKET= node server.js` — DRY_RUN 서버 기동
+- `curl /deployed/games/does-not-exist.html` — HTTP 404, `Not Found` 확인
+- 서버 프로세스 종료 — 포트 3210 정리
+- 실 S3 호출·버킷 생성·AWS 자격 파일 읽기: 실행 안 함 — 코더 금지 범위
+
+### Decisions / assumptions
+- S3 Metadata의 한글 소속·이름은 URI percent-encoding으로 ASCII 값으로 저장하고 운영 도구에서 명시적으로 decode
+- 퍼블릭 S3 웹사이트 정책을 사용할 수 있도록 BPA 네 플래그 해제 후 bucket policy 적용 순서를 유지
+- 미존재 로컬 배포 파일은 내부 오류가 아닌 HTTP 404로 처리
+
+### Handoff
+- WO-002 반려 수정 상태를 검증 대기로 유지
+- 현재 브랜치 `wo/002`에서 수정·테스트·저널을 같은 커밋에 포함
+- Claude가 S3 실경로 관련 수정사항을 재검증 후 main 머지 여부를 판정
