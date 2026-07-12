@@ -274,3 +274,29 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - WO-002 반려 수정 상태를 검증 대기로 유지
 - 현재 브랜치 `wo/002`에서 수정·테스트·저널을 같은 커밋에 포함
 - Claude가 S3 실경로 관련 수정사항을 재검증 후 main 머지 여부를 판정
+
+---
+
+## 2026-07-12 15:25 KST — claude (Planner/Verifier) — WO-002 재검증 통과·머지 + 퍼블릭 레포 연결
+
+### Intent
+- WO-002 반려 수정분 재검증, main 머지, GitHub 퍼블릭 레포 생성·연결(사용자 지시)
+
+### Files changed
+- .agent/work-orders/WO-002-html-delivery.md — 상태 `완료`
+- .agent/TURN_LOG.md, CURRENT_STATE.md, HANDOFF.md — 갱신
+
+### Commands / verification
+- 수정 diff 검토: encodeURIComponent 메타데이터 인코딩 / BPA 해제 4플래그 / ENOENT→404 — 3건 모두 정확
+- npm test 6/6 (독립 재실행), 미존재 key 404 실측, 한글 필드 업로드 201 실측, 서버 정리
+- git merge --no-edit wo/002 → 65eb2e2
+- 공개 전 스캔: 시크릿 패턴 없음, .env·uploads.log 추적 없음
+- gh repo create nxtcloud-edu/nxt-ai-literacy --public + push (이 턴에서 실행)
+
+### Decisions / assumptions
+- 추가 발견: publicUrl()이 S3 모드에서도 /deployed/ 접두사 사용 — S3 웹사이트 URL과 불일치 (WO-003에 수정 포함)
+- WO-003 스코프 확정: Terraform IaC(S3+EC2+IAM+SSM) + publicUrl 수정 + provision-s3.sh 제거(IaC로 대체)
+- 퍼블릭 레포 덕에 EC2 배포는 git clone 방식으로 단순화
+
+### Handoff
+- Hermes: wo/003에서 WO-003 수행

@@ -1,5 +1,5 @@
 # WO-002: html-delivery 업로드·배포 운영 프로그램
-상태: 검증 대기
+상태: 완료 (2026-07-12, 검증자 Claude — 반려 1회 후 수정 확인, 독립 실측 통과, main 머지 65eb2e2)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/002` 브랜치 (README 규칙)
 
