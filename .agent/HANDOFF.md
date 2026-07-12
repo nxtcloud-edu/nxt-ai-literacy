@@ -12,9 +12,9 @@ git log -1 --pretty=format:'%h %s'
 ```
 
 ## Next recommended project actions
-1. (Hermes) 반려 수정 완료 신호 확정 — TURN_LOG 완료 헤더 + 수정 커밋
+1. (Hermes) WO-003 AL2023 경로 수정 완료 신호 확정 — TURN_LOG 완료 헤더 + 수정 커밋
 2. (Claude) 수정사항 재검증 → 통과 시 main 머지
-3. (Claude+사용자) S3 버킷 프로비저닝 및 실배포 검증 → 수강생 안내 문서 작성
+3. (Claude+사용자) Terraform apply 및 EC2/S3 실배포 검증
 
 ## Collision risks
 - Hermes는 기본 모드 구동 — dangerous-command 프롬프트는 60초 내 사람이 tmux attach로 승인 필요 (Gotcha 8)

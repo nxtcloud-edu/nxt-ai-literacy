@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { MAX_FILE_SIZE, createObjectKey, encodeMetadataValue, validateUploadInput } = require('../server');
+const { MAX_FILE_SIZE, createObjectKey, encodeMetadataValue, publicUrl, validateUploadInput } = require('../server');
 
 function file(name = 'game.html', size = 10) {
   return { originalname: name, size };
@@ -37,4 +37,14 @@ test('S3 메타데이터 값은 ASCII URI 인코딩으로 저장한다', () => {
   const encoded = encodeMetadataValue('서울 1팀/홍길동');
   assert.equal(encoded, '%EC%84%9C%EC%9A%B8%201%ED%8C%80%2F%ED%99%8D%EA%B8%B8%EB%8F%99');
   assert.equal(decodeURIComponent(encoded), '서울 1팀/홍길동');
+});
+
+test('S3 모드 URL은 버킷 웹사이트 루트에 직접 연결한다', () => {
+  const previousBucket = process.env.S3_BUCKET;
+  const previousBaseUrl = process.env.BASE_URL;
+  process.env.S3_BUCKET = 'nxt-ai-literacy-games';
+  process.env.BASE_URL = 'http://bucket.s3-website.ap-northeast-2.amazonaws.com/';
+  assert.equal(publicUrl('games/example.html'), 'http://bucket.s3-website.ap-northeast-2.amazonaws.com/games/example.html');
+  process.env.S3_BUCKET = previousBucket;
+  process.env.BASE_URL = previousBaseUrl;
 });

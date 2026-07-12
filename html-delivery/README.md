@@ -17,13 +17,7 @@ npm start
 
 ## S3 전환
 
-1. AWS 표준 자격 증명 체인을 준비합니다. `AWS_PROFILE` 등으로 지정하며 키를 코드나 저장소에 넣지 않습니다.
-2. `S3_BUCKET`, `S3_REGION`, `BASE_URL`을 `.env`에 설정합니다.
-3. 운영자가 아래 프로비저닝 스크립트를 검토·실행합니다. 이 저장소의 Coder 작업에서는 실행하지 않습니다.
-
-```bash
-./scripts/provision-s3.sh <bucket-name> <region>
-```
+Terraform이 S3 버킷·웹사이트 설정·퍼블릭 읽기 정책을 관리합니다. `infra/README.md`의 검증자/운영자 절차를 따라 Terraform output의 `s3_website_endpoint`를 `BASE_URL`로 설정합니다. S3 모드에서 발급 URL은 `${BASE_URL}/${key}`이고, DRY_RUN에서는 기존 `${BASE_URL}/deployed/${key}`를 사용합니다.
 
 S3 객체에는 `affiliation`, `name`, `uploadedAt` Metadata와 `text/html; charset=utf-8` Content-Type이 설정됩니다. S3 Metadata는 ASCII 규칙에 맞도록 `encodeURIComponent` 값으로 저장하므로, 운영 도구에서 소속·이름을 표시할 때 `decodeURIComponent`로 복원합니다.
 

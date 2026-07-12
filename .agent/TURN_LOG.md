@@ -328,3 +328,85 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/003에서 user_data 수정 후 재신호
+
+---
+
+## 2026-07-12 15:23 KST — hermes (Coder) — WO-003
+
+### Intent
+- Terraform 1.5.7 호환 S3·EC2·IAM 인프라와 EC2 user-data 작성
+- S3 모드 `publicUrl` 분기 수정 및 Terraform SSOT 전환에 따른 provision 스크립트 제거
+
+### Files changed
+- `infra/versions.tf`, `main.tf`, `variables.tf`, `outputs.tf`, `terraform.tfvars.example`, `README.md` — AWS provider·S3·EC2·IAM/SSM·user-data·출력·운영 절차 정의
+- `infra/.terraform.lock.hcl` — AWS provider lockfile 생성
+- `html-delivery/server.js` — S3 모드 URL을 `${BASE_URL}/${key}`, DRY_RUN을 `${BASE_URL}/deployed/${key}`로 분기하고 `publicUrl` export
+- `html-delivery/test/validation.test.js` — S3 모드 URL 회귀 테스트 추가(총 7건)
+- `html-delivery/scripts/provision-s3.sh` — Terraform SSOT 전환으로 삭제
+- `html-delivery/README.md` — provision 스크립트 참조 제거, Terraform 기준 S3 전환 안내
+- `.gitignore` — Terraform state·vars·plan·crash log·`.terraform/` 무시 규칙 추가
+- `.agent/work-orders/WO-003-terraform-infra.md` — 상태를 `검증 대기`로 변경
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md` — WO-003 구현·검증 상태 반영
+- `.agent/TURN_LOG.md` — 본 완료 기록 추가
+
+### Commands / verification
+- `git status --short --branch && git log -3 --oneline --decorate && git rev-parse --abbrev-ref HEAD && git worktree list` — main과 `wo/003`가 `6605f99`에서 일치, 현재 브랜치 `wo/003` 확인
+- `terraform version` — Terraform v1.5.7 확인
+- `terraform fmt -recursive infra` — 포맷 적용
+- `terraform -chdir=infra init -backend=false` — AWS provider v5.100.0 설치 및 local backend 없이 초기화 성공
+- `terraform -chdir=infra fmt -check` — 통과
+- `terraform -chdir=infra validate` — `Success! The configuration is valid.`
+- 저장소 루트 `npm test` — 실패(exit 254), 루트에 `package.json`이 없어 발생한 경로 오류; 앱 테스트는 아래 올바른 디렉터리에서 재실행
+- `html-delivery` 디렉터리 `npm test` — 초기 실행에서 `publicUrl is not a function` 1건 실패; export 누락 확인
+- `html-delivery/server.js` `publicUrl` export 추가 후 `npm test` — 7건 모두 통과
+- `terraform -chdir=infra fmt -check && terraform -chdir=infra validate` — 최종 재검증 통과
+- `git diff --check` — 통과
+- secret-like 패턴 scan — 신규 IaC diff에서 AWS secret/access key/password/token/private key 패턴 없음
+- `git rm html-delivery/scripts/provision-s3.sh` — Terraform SSOT 전환에 따른 삭제
+- `terraform plan`, `terraform apply`, `aws` CLI, AWS 자격 파일 읽기 — 실행 안 함; WO-003 금지 범위
+
+### Decisions / assumptions
+- S3 퍼블릭 웹사이트와 EC2 업로드 앱을 서울 리전 단일 Terraform 구성으로 관리
+- EC2는 기본 VPC의 첫 서브넷, AL2023 최신 x86_64 AMI, `t3.micro`, HTTP 80만 공개하고 SSH 22는 열지 않음
+- EC2 user-data는 공개 GitHub 저장소를 clone하고 Node.js 20·git 설치, npm install, systemd enable --now까지 수행
+- SSM Managed Instance Core와 버킷 `games/*` 대상 `s3:PutObject`만 IAM에 부여
+- WAF·CloudFront·Route 53·HTTPS·Auto Scaling·원격 backend는 비용·범위상 생성하지 않음
+
+### Handoff
+- WO-003 상태를 `검증 대기`로 전환
+- 현재 브랜치 `wo/003`에서 구현·검증 기록을 타입 접두사 커밋에 포함
+- Claude가 `terraform validate` 결과와 IaC 코드를 재검토한 후 main 머지 여부를 판정
+
+
+---
+
+## 2026-07-12 15:29 KST — hermes (Coder) — WO-003
+
+### Intent
+- WO-003 1차 검증 반려 사유 수정: AL2023의 버전 고정 Node.js 20·npm 20 바이너리를 alternatives 없이 결정론적 절대 경로로 사용
+
+### Files changed
+- `infra/main.tf` — `nodejs20-npm` 패키지 추가, npm 실행을 `/usr/bin/npm-20`, systemd ExecStart를 `/usr/bin/node-20`으로 변경
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md` — AL2023 경로 수정 완료 및 재검증 대기 상태 반영
+- `.agent/TURN_LOG.md` — 본 수정 완료 기록 및 tidy 커밋 분리 환류 추가
+
+### Commands / verification
+- `git status --short --branch && git log -2 --oneline --decorate && git rev-parse --abbrev-ref HEAD` — clean `wo/003`, HEAD `1cef03c` 확인
+- `read_file` — CURRENT_STATE, HANDOFF, WO-003 명세 재확인
+- `terraform fmt -recursive infra` — 포맷 적용
+- `terraform -chdir=infra fmt -check` — 통과
+- `terraform -chdir=infra validate` — `Success! The configuration is valid.`
+- 저장소 루트 `npm test` — 실패(exit 254), 루트에 `package.json`이 없어 발생한 경로 오류
+- `html-delivery` 디렉터리 `npm test` — 7건 모두 통과
+- `grep -nE 'dnf install|npm-20|ExecStart' infra/main.tf` — `nodejs20 nodejs20-npm`, `/usr/bin/npm-20`, `/usr/bin/node-20` 세 경로 확인
+- `git diff --check` — 통과
+- `terraform plan`, `terraform apply`, `aws` CLI, AWS 자격 파일 읽기 — 실행 안 함; WO-003 금지 범위
+
+### Decisions / assumptions
+- AL2023의 `/usr/bin/node`·`/usr/bin/npm` 심링크나 alternatives 상태에 의존하지 않고 패키지가 제공하는 버전 고정 바이너리를 직접 사용
+- 비차단 환류 수용: WO-003의 tidy 커밋 미분리는 이번만 수용되며, 다음 WO부터 정리·삭제 변경은 `tidy:` 목적 커밋으로 분리하지 않으면 반려 사유로 간주
+
+### Handoff
+- WO-003 상태는 `검증 대기` 유지
+- 현재 브랜치 `wo/003`에서 AL2023 경로 수정·검증·저널을 같은 수정 커밋에 포함
+- Claude가 user_data의 패키지·절대 경로를 재검증한 후 main 머지 여부를 판정
