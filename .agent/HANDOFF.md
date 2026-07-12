@@ -18,4 +18,4 @@ git log -1 --pretty=format:'%h %s'
 
 ## Collision risks
 - 로컬 포트·DB·도커는 워크트리 간 공유 — 전 스위트는 한 번에 하나만
-- Hermes는 `--yolo` 구동 — 워크트리 격리 + push 차단 훅이 전제
+- Hermes는 기본 모드 구동 — dangerous-command 프롬프트는 60초 내 사람이 tmux attach로 승인 필요 (Gotcha 8)

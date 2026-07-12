@@ -30,3 +30,10 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 사용자가 첫 작업을 정의하면 Claude가 WO-001 발행 → tmux-send-safe.sh로 착수 지시
+
+### Addendum (2026-07-12 14:16 KST)
+- 정정: hermes는 `--yolo`가 아니라 **기본 모드**로 기동 — Claude Code 권한 분류기가 --yolo 기동을
+  거부(사용자 명시 승인 없음). dangerous-command 프롬프트 발생 시 사람이 `tmux attach -t ai-literacy-hermes`로
+  직접 승인. 무인 루프가 필요해지면 사용자 승인 후 --yolo 전환.
+- 게이트 실측: pre-commit 가드 (B) 기존 줄 수정 차단 exit 1 확인, 정상 append 통과 확인.
+  main 브랜치는 플래너 워크트리가 점유 중이라 코더 워크트리에서 checkout 자체가 불가 (이중 방어).
