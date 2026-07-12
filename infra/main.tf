@@ -67,6 +67,7 @@ data "archive_file" "lambda" {
     ".env.example",
     ".local-deploy",
     ".local-feedback.jsonl",
+    ".local-registry.json",
     "scripts",
     "test",
     "uploads.log.jsonl",
@@ -129,7 +130,7 @@ resource "aws_iam_role_policy" "feedback" {
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["dynamodb:PutItem", "dynamodb:Query"]
+      Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:UpdateItem"]
       Resource = aws_dynamodb_table.feedback.arn
     }]
   })
