@@ -4,6 +4,7 @@
 html-delivery/.env
 html-delivery/.local-deploy/
 html-delivery/uploads.log.jsonl
+html-delivery/.local-feedback.jsonl
 html-delivery/node_modules/
 
 # Terraform local state and plans
