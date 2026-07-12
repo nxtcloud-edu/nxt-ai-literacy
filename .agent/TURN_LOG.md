@@ -300,3 +300,31 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/003에서 WO-003 수행
+
+---
+
+## 2026-07-12 15:40 KST — claude (Planner/Verifier) — WO-003 1차 검증: 반려 (수정 1건 + 환류 1건)
+
+### Intent
+- WO-003 산출물 독립 검증 및 머지 판정
+
+### Files changed
+- .agent/TURN_LOG.md — 이 엔트리만
+
+### Commands / verification
+- infra/ 5개 파일 + server.js diff 전문 검토 — 구성·IAM 최소권한·publicUrl 분기·outputs 모두 양호
+- terraform init -backend=false / fmt -check / validate — 통과 (독립 재실행)
+- npm test — 7/7 통과 (독립 재실행)
+- WebSearch로 AL2023 nodejs20 패키징 실측 확인 (AWS 공식 문서 + amazonlinux GitHub issue #875)
+
+### Decisions / assumptions
+- 반려 사유 1건: **user_data의 `dnf install -y nodejs20`** — AL2023 nodejs 패키지는 네임스페이스형으로
+  바이너리가 `/usr/bin/node-20`·`npm-20`이고 `node`/`npm` 심링크 미생성 이슈가 보고됨 —
+  `npm install`(L149)과 `ExecStart=/usr/bin/node`(L171)가 첫 부팅에 실패한다.
+  수정 지시: `nodejs20 nodejs20-npm git` 설치 + **명시 경로**(`/usr/bin/npm-20`, `ExecStart=/usr/bin/node-20`)
+  사용 (alternatives 의존 금지 — 결정론적 경로가 안전)
+- 환류 1건 (비차단): WO 설계 결정 7의 "provision-s3.sh 제거는 별도 tidy: 커밋" 미준수 —
+  feat+fix+tidy 단일 커밋. 이번은 수용하되 다음 WO부터 커밋 분리 위반 시 반려 사유로 격상
+
+### Handoff
+- Hermes: wo/003에서 user_data 수정 후 재신호
