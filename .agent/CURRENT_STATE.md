@@ -1,22 +1,23 @@
 # Current State
 
-Updated: 2026-07-12 21:42 KST
+Updated: 2026-07-12 22:02 KST
 
 ## Active owners
-- Hermes (Coder): WO-010 소유권·버전 레지스트리·추천 구현 및 DRY_RUN E2E 완료, 검증 대기 (`wo/010`)
-- Claude (Planner): API·추천·UI·IAM·README·hygiene 커밋 재검증 대기
+- Hermes (Coder): WO-011 rate limit·추천 보존·S3 REST 오리진 격리 구현 및 로컬 검증 완료 (`wo/011`)
+- Claude (Planner): WO-011 목적별 커밋·DRY_RUN·Terraform 재검증 대기
 
 ## Last verified repo state
-- Branch: wo/010 / API·추천·UI·infra·README·hygiene·상태저널 7개 목적 커밋 완료
-- 검증: `npm test` 9/9; Terraform fmt/validate; v1→추천→v2 URL 불변→오자격 403→추천순 E2E 통과
+- Branch: `wo/011`
+- 구현 커밋: rate limit `83c20a0`, 부분 갱신 `1b2f6f6`, 오리진 격리 `fe08fae`
+- 검증: `npm test` 15/15; Terraform fmt-check/validate; DRY_RUN 429·likes 보존·`/play` 404 통과
 
 ## Completed
-- WO-001~WO-009 완료 및 프로덕션 배포
+- WO-001~WO-010 완료 및 프로덕션 배포
 
 ## In progress
-- WO-010: 소유권+버전 관리 및 추천 (`wo/010`)
+- WO-011: 보안 하드닝 구현 완료, 검증 대기
 
 ## Next safe action
-1. Claude가 7개 커밋 경계와 scrypt·비밀 비노출·DynamoDB 레지스트리/IAM을 재검증
-2. 검증자 재시딩 후 main 머지·Lambda/Terraform 배포
-3. 프로덕션 v1/v2 불변 URL·추천·정렬 E2E
+1. Claude가 3개 구현 커밋 경계와 rate limiter·UpdateCommand·REST URL을 재검증
+2. 검증 통과 시 main 머지 후 Terraform apply/Lambda 배포
+3. 프로덕션에서 REST HTTPS iframe·추천/피드백 429·버전업 추천 보존 최종 확인

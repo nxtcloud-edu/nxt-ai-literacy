@@ -918,3 +918,48 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - WO-011(보안 하드닝) → WO-012(로고·테마 토글) 순차 발행
+
+---
+
+## 2026-07-12 22:02 KST — hermes (Coder) — WO-011 완료
+
+### Intent
+- 추천·피드백 요청에 in-memory 슬라이딩 윈도우 rate limit 적용
+- 버전업 시 likes를 덮어쓰지 않는 부분 갱신 전환
+- `/play` 프록시를 폐기하고 S3 REST HTTPS 오리진으로 콘텐츠 격리
+
+### Files changed
+- `html-delivery/ratelimit.js`, `server.js`, tests — IP 식별·요청 제한·429와 회귀 테스트
+- `html-delivery/registry.js` — DynamoDB UpdateCommand/로컬 병합 버전 갱신
+- `html-delivery/public/view.html` — API가 제공한 contentUrl을 iframe·새 탭에 사용
+- `infra/main.tf`, `infra/outputs.tf` — S3 website 리소스/output 제거, REST HTTPS BASE_URL
+- `.agent/work-orders/WO-011-security-hardening.md`, `CURRENT_STATE.md`, `HANDOFF.md`, `TURN_LOG.md` — 검증 대기 인계
+
+### Commands·verification
+- 시작 전 필수 문서·WO·최근 보안 리뷰·대상 코드 조회, `git status --short --branch`로 clean `wo/011` 확인
+- `./check-journal.sh .agent` — 실패: 저장소 루트에 스크립트 없음(127); 이후 AGENTS 규칙에 따라 git/저널 직접 대조
+- `node --test test/ratelimit.test.js` — 4/4 통과
+- `node --test test/validation.test.js` — 부분 갱신 단계 9/9, 오리진 단계 10/10 통과
+- `npm test` — 최종 15/15 통과
+- `terraform fmt -recursive infra` — 실행 완료
+- `terraform -chdir=infra fmt -check` — 통과
+- `terraform -chdir=infra validate` — 두 차례 모두 구성 valid
+- DRY_RUN 서버 health 200, v1 upload 201
+- like 4회 단독 curl — 200·200·200·429, 4번째 지정 오류 JSON 확인
+- feedback 6회 단독 curl — 201×5·429, 6번째 지정 오류 JSON 확인
+- 정상 자격 v2 upload 201 → 동일 contentId, latestVersion 2, likes 3 보존, v2 contentUrl 확인
+- `/play/games/{id}-v2.html` curl — 404
+- `/play`, website resource/output, GetObjectCommand 검색 — 0건
+- 서버 process kill 및 process list 0건 확인; 정확한 두 artifact·registry row·feedback 5건·임시 파일/자격 제거
+- `git diff --name-only origin/main..HEAD -- box-game run-game html-delivery/lambda.js` — 출력 없음
+- 구현 커밋: `83c20a0` rate limit, `1b2f6f6` 부분 갱신, `fe08fae` 오리진 격리
+- 실제 AWS 호출, Terraform plan/apply, 프로덕션 접근·배포·push — 실행 안 함
+
+### Decisions
+- rate limiter는 Lambda 인스턴스별·콜드스타트 초기화 완화책임을 모듈 주석으로 명시
+- S3 모드는 REST HTTPS 별도 오리진, DRY_RUN만 `/deployed/{key}` same-origin 유지
+- `/api/games`와 `/api/content`에 `contentUrl`, upload에 기존 `directUrl`로 콘텐츠 접근 URL 제공
+
+### Handoff
+- WO-011 상태 `검증 대기`
+- Claude가 3개 구현 커밋과 DRY_RUN/Terraform 근거를 독립 재검증 후 main 머지·배포 판정
