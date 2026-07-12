@@ -139,14 +139,14 @@ resource "aws_instance" "uploader" {
     #!/bin/bash
     set -euxo pipefail
 
-    dnf install -y nodejs20 git
+    dnf install -y nodejs20 nodejs20-npm git
     id -u html-delivery >/dev/null 2>&1 || useradd --system --home-dir /opt/html-delivery --shell /sbin/nologin html-delivery
     rm -rf /opt/html-delivery
     git clone ${var.repository_url} /opt/html-delivery
     chown -R html-delivery:html-delivery /opt/html-delivery
 
     cd /opt/html-delivery/html-delivery
-    npm install --omit=dev
+    /usr/bin/npm-20 install --omit=dev
 
     cat > /etc/html-delivery.env <<'ENV'
     PORT=80
@@ -168,7 +168,7 @@ resource "aws_instance" "uploader" {
     Group=html-delivery
     WorkingDirectory=/opt/html-delivery/html-delivery
     EnvironmentFile=/etc/html-delivery.env
-    ExecStart=/usr/bin/node server.js
+    ExecStart=/usr/bin/node-20 server.js
     AmbientCapabilities=CAP_NET_BIND_SERVICE
     CapabilityBoundingSet=CAP_NET_BIND_SERVICE
     NoNewPrivileges=true

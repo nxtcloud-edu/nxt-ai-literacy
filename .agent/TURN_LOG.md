@@ -349,3 +349,37 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - WO-003 상태를 `검증 대기`로 전환
 - 현재 브랜치 `wo/003`에서 구현·검증 기록을 타입 접두사 커밋에 포함
 - Claude가 `terraform validate` 결과와 IaC 코드를 재검토한 후 main 머지 여부를 판정
+
+
+---
+
+## 2026-07-12 15:29 KST — hermes (Coder) — WO-003
+
+### Intent
+- WO-003 1차 검증 반려 사유 수정: AL2023의 버전 고정 Node.js 20·npm 20 바이너리를 alternatives 없이 결정론적 절대 경로로 사용
+
+### Files changed
+- `infra/main.tf` — `nodejs20-npm` 패키지 추가, npm 실행을 `/usr/bin/npm-20`, systemd ExecStart를 `/usr/bin/node-20`으로 변경
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md` — AL2023 경로 수정 완료 및 재검증 대기 상태 반영
+- `.agent/TURN_LOG.md` — 본 수정 완료 기록 및 tidy 커밋 분리 환류 추가
+
+### Commands / verification
+- `git status --short --branch && git log -2 --oneline --decorate && git rev-parse --abbrev-ref HEAD` — clean `wo/003`, HEAD `1cef03c` 확인
+- `read_file` — CURRENT_STATE, HANDOFF, WO-003 명세 재확인
+- `terraform fmt -recursive infra` — 포맷 적용
+- `terraform -chdir=infra fmt -check` — 통과
+- `terraform -chdir=infra validate` — `Success! The configuration is valid.`
+- 저장소 루트 `npm test` — 실패(exit 254), 루트에 `package.json`이 없어 발생한 경로 오류
+- `html-delivery` 디렉터리 `npm test` — 7건 모두 통과
+- `grep -nE 'dnf install|npm-20|ExecStart' infra/main.tf` — `nodejs20 nodejs20-npm`, `/usr/bin/npm-20`, `/usr/bin/node-20` 세 경로 확인
+- `git diff --check` — 통과
+- `terraform plan`, `terraform apply`, `aws` CLI, AWS 자격 파일 읽기 — 실행 안 함; WO-003 금지 범위
+
+### Decisions / assumptions
+- AL2023의 `/usr/bin/node`·`/usr/bin/npm` 심링크나 alternatives 상태에 의존하지 않고 패키지가 제공하는 버전 고정 바이너리를 직접 사용
+- 비차단 환류 수용: WO-003의 tidy 커밋 미분리는 이번만 수용되며, 다음 WO부터 정리·삭제 변경은 `tidy:` 목적 커밋으로 분리하지 않으면 반려 사유로 간주
+
+### Handoff
+- WO-003 상태는 `검증 대기` 유지
+- 현재 브랜치 `wo/003`에서 AL2023 경로 수정·검증·저널을 같은 수정 커밋에 포함
+- Claude가 user_data의 패키지·절대 경로를 재검증한 후 main 머지 여부를 판정

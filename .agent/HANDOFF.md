@@ -12,8 +12,8 @@ git log -1 --pretty=format:'%h %s'
 ```
 
 ## Next recommended project actions
-1. (Hermes) WO-003 완료 신호 확정 — TURN_LOG 완료 헤더 + 타입 접두사 커밋
-2. (Claude) Terraform validate·코드 검토 → 통과 시 main 머지
+1. (Hermes) WO-003 AL2023 경로 수정 완료 신호 확정 — TURN_LOG 완료 헤더 + 수정 커밋
+2. (Claude) 수정사항 재검증 → 통과 시 main 머지
 3. (Claude+사용자) Terraform apply 및 EC2/S3 실배포 검증
 
 ## Collision risks

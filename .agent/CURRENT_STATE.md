@@ -1,14 +1,14 @@
 # Current State
 
-Updated: 2026-07-12 15:23 KST
+Updated: 2026-07-12 15:29 KST
 
 ## Active owners
-- Hermes (Coder): WO-003 구현·검증 완료, 검증 대기 (`wo/003` 브랜치)
-- Claude (Planner): Terraform validate 결과 재검증 및 머지 판정 대기
+- Hermes (Coder): WO-003 AL2023 Node.js 경로 수정 완료, 재검증 대기 (`wo/003` 브랜치)
+- Claude (Planner): 반려 수정사항 재검증 및 머지 판정 대기
 
 ## Last verified repo state
-- Branch: wo/003 / Terraform·publicUrl 구현·저널 커밋 완료
-- 검증: Terraform 1.5.7 `init -backend=false`, `fmt -check`, `validate` 통과; `npm test` 7건 통과
+- Branch: wo/003 / AL2023 결정론적 Node.js·npm 경로 수정·저널 커밋 완료
+- 검증: Terraform 1.5.7 `fmt -check`, `validate` 통과; `npm test` 7건 통과
 
 ## Completed
 - 협업 인프라 셋업 (저널·명령서 채널·워크트리 게이트·tmux 세션)
@@ -17,9 +17,9 @@ Updated: 2026-07-12 15:23 KST
 - **WO-001 완료**: run-game/game-ver1.html (검증 통과, main 머지)
 
 ## In progress
-- WO-002: html-delivery 업로드·배포 운영 프로그램 (Hermes, wo/002)
+- WO-003: Terraform 인프라 AL2023 Node.js 경로 반려 수정 (`wo/003`)
 
 ## Next safe action
-1. Hermes 완료 신호(wo/002 커밋 + TURN_LOG 완료 헤더) 대기
-2. Claude가 DRY_RUN 플로우 실측 검증 → 통과 시 main 머지
-3. 이후: S3 버킷 프로비저닝(검증자+사용자 AWS 확인), 수강생 안내 문서
+1. Hermes 수정 완료 신호(`wo/003` 커밋 + TURN_LOG 완료 헤더) 대기
+2. Claude가 AL2023 user_data 경로 재검증 → 통과 시 main 머지
+3. 이후: Terraform apply 및 EC2/S3 실배포 검증(검증자+사용자)
