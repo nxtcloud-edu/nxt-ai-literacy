@@ -1,5 +1,5 @@
 # WO-011: 보안 하드닝 (rate limit·추천 유실·콘텐츠 오리진 격리)
-상태: 검증 대기
+상태: 완료 (2026-07-12, 검증자 Claude — 429·likes 보존·오리진 격리 실측 통과, main 머지)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/011` 브랜치 (README 규칙)
 
