@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/assets/theme.js"></script>
 <title>내 게임 업로드 · AI 게임 갤러리</title>
 <style>
   :root { color-scheme: dark; --bg: #090a12; --panel: #171a2f; --line: #3a3e5b; --text: #f4f6ff; --muted: #9ca3bd; --cyan: #00d2ff; --pink: #e94560; }
@@ -29,10 +30,11 @@
   .error { border-color: var(--pink) !important; color: #ff9aae; }
   .hint { margin: 8px 0 0; color: #747c99; font-size: 12px; }
 </style>
+<link rel="stylesheet" href="/assets/theme.css">
 </head>
 <body>
+<nav class="site-nav"><a class="back" href="/">← 갤러리로 돌아가기</a><div class="site-tools"><button class="theme-toggle" type="button" data-theme-toggle>🌙 다크</button></div></nav>
 <main>
-  <a class="back" href="/">← 갤러리로 돌아가기</a>
   <section class="panel" aria-labelledby="upload-title">
     <p class="eyebrow">PUBLISH YOUR GAME</p>
     <h1 id="upload-title">내 게임 업로드</h1>
