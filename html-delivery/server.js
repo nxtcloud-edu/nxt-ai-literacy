@@ -1,30 +1,22 @@
-const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const express = require('express');
 const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const {
-  GetObjectCommand,
-  HeadObjectCommand,
-  ListObjectsV2Command,
-  PutObjectCommand,
-  S3Client,
-} = require('@aws-sdk/client-s3');
+const { GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
+const { findByIdentity, getContent: getRegisteredContent, hashPassword, listContents, newContentId, saveRegistryItem, verifyPassword } = require('./registry');
 
 const PORT = Number(process.env.PORT || 3210);
 const MAX_FILE_SIZE = 1024 * 1024;
 const COHORTS = ['2026-고대세종-ai', '2026-한이음-ai-중급'];
 const CATEGORIES = ['미니게임', '랜딩페이지'];
-const DEFAULT_CATEGORY = CATEGORIES[0];
-const UNKNOWN_METADATA = '알 수 없음';
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');
-const UPLOAD_LOG = path.join(__dirname, 'uploads.log.jsonl');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '.local-feedback.jsonl');
-const CONTENT_KEY_PATTERN = /^games\/[0-9]{14}-[0-9a-f]{4}\.html$/;
+const CONTENT_ID_PATTERN = /^[0-9a-f]{8}$/;
+const CONTENT_KEY_PATTERN = /^games\/[0-9a-f]{8}-v[1-9][0-9]*\.html$/;
 
-function validateUploadInput({ affiliation, category, name, file }) {
+function validateUploadInput({ affiliation, category, name, password, file }) {
   const errors = [];
   const trimmedAffiliation = typeof affiliation === 'string' ? affiliation.trim() : '';
   const trimmedCategory = typeof category === 'string' ? category.trim() : '';
@@ -32,59 +24,32 @@ function validateUploadInput({ affiliation, category, name, file }) {
   if (!COHORTS.includes(trimmedAffiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
   if (!CATEGORIES.includes(trimmedCategory)) errors.push('분류를 선택하세요.');
   if (!trimmedName || trimmedName.length > 40) errors.push('이름은 1~40자로 입력하세요.');
+  if (typeof password !== 'string' || password.length < 4 || password.length > 30) errors.push('비밀번호는 4~30자로 입력하세요.');
   if (!file) errors.push('HTML 파일을 선택하세요.');
   else {
     if (path.extname(file.originalname).toLowerCase() !== '.html') errors.push('HTML 파일만 업로드할 수 있습니다.');
     if (file.size > MAX_FILE_SIZE) errors.push('파일 크기는 1MB 이하여야 합니다.');
   }
-  return {
-    errors,
-    affiliation: trimmedAffiliation,
-    category: trimmedCategory,
-    name: trimmedName,
-  };
+  return { errors, affiliation: trimmedAffiliation, category: trimmedCategory, name: trimmedName };
 }
 
-function createObjectKey(now = new Date()) {
-  const stamp = now.toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-  const random = crypto.randomBytes(2).toString('hex');
-  return `games/${stamp}-${random}.html`;
-}
-
+function isValidContentId(value) { return typeof value === 'string' && CONTENT_ID_PATTERN.test(value); }
+function isValidContentKey(value) { return typeof value === 'string' && CONTENT_KEY_PATTERN.test(value); }
+function createVersionKey(contentId, version) { return `games/${contentId}-v${version}.html`; }
 function publicUrl(key) {
-  const baseUrl = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
-  return process.env.S3_BUCKET ? `${baseUrl}/${key}` : `${baseUrl}/deployed/${key}`;
+  const base = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
+  return process.env.S3_BUCKET ? `${base}/${key}` : `${base}/deployed/${key}`;
 }
-
-function encodeMetadataValue(value) {
-  return encodeURIComponent(value);
-}
-
-function decodeMetadataValue(value) {
-  if (typeof value !== 'string' || value.length === 0) return UNKNOWN_METADATA;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return UNKNOWN_METADATA;
-  }
-}
-
-function normalizeCategory(value, encoded = false) {
-  const decoded = encoded ? decodeMetadataValue(value) : value;
-  return CATEGORIES.includes(decoded) ? decoded : DEFAULT_CATEGORY;
-}
-
+function requestBaseUrl(req) { return `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`; }
+function viewerUrl(req, contentId) { return `${requestBaseUrl(req)}/view.html?id=${contentId}`; }
 function filterGames(games, { cohort, category } = {}) {
-  return games.filter((game) => (
-    (!cohort || game.affiliation === cohort)
-    && (!category || game.category === category)
-  ));
+  return games.filter((game) => (!cohort || game.affiliation === cohort) && (!category || game.category === category));
 }
-
-function isValidContentKey(key) {
-  return typeof key === 'string' && CONTENT_KEY_PATTERN.test(key);
+function sortGames(games, sort = 'latest') {
+  return [...games].sort((a, b) => sort === 'likes'
+    ? (b.likes - a.likes) || b.updatedAt.localeCompare(a.updatedAt)
+    : b.updatedAt.localeCompare(a.updatedAt));
 }
-
 function validateFeedbackInput({ nickname, message }) {
   const trimmedNickname = typeof nickname === 'string' ? nickname.trim() : '';
   const trimmedMessage = typeof message === 'string' ? message.trim() : '';
@@ -93,179 +58,41 @@ function validateFeedbackInput({ nickname, message }) {
   if (trimmedNickname.length > 20) errors.push('닉네임은 20자 이하로 입력하세요.');
   return { errors, nickname: trimmedNickname || '익명', message: trimmedMessage };
 }
-
-function parseFeedbackLog(contents, key) {
+function parseFeedbackLog(contents, contentId) {
   return contents.split('\n').filter(Boolean).flatMap((line) => {
-    try {
-      const entry = JSON.parse(line);
-      return entry.contentKey === key ? [entry] : [];
-    } catch {
-      return [];
-    }
+    try { const item = JSON.parse(line); return item.contentKey === contentId ? [item] : []; }
+    catch { return []; }
   }).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-function requestBaseUrl(req) {
-  const protocol = req.get('x-forwarded-proto') || req.protocol;
-  return `${protocol}://${req.get('host')}`;
-}
-
-function viewerUrl(req, key) {
-  return `${requestBaseUrl(req)}/view.html?key=${encodeURIComponent(key)}`;
-}
-
-function sortGames(games) {
-  return [...games].sort((a, b) => {
-    const aTime = Date.parse(a.uploadedAt) || 0;
-    const bTime = Date.parse(b.uploadedAt) || 0;
-    return bTime - aTime;
-  });
-}
-
-function parseUploadLog(contents) {
-  const games = contents
-    .split('\n')
-    .filter(Boolean)
-    .flatMap((line) => {
-      try {
-        const entry = JSON.parse(line);
-        if (!entry.key) return [];
-        return [{
-          key: entry.key,
-          url: entry.url || publicUrl(entry.key),
-          name: entry.name || UNKNOWN_METADATA,
-          affiliation: entry.affiliation || UNKNOWN_METADATA,
-          category: normalizeCategory(entry.category),
-          uploadedAt: entry.uploadedAt || '',
-        }];
-      } catch {
-        return [];
-      }
-    });
-  return sortGames(games);
-}
-
-async function listLocalGames() {
-  try {
-    return parseUploadLog(await fs.readFile(UPLOAD_LOG, 'utf8'));
-  } catch (error) {
-    if (error.code === 'ENOENT') return [];
-    throw error;
+async function storeObject(key, buffer, metadata) {
+  if (!process.env.S3_BUCKET) {
+    const destination = path.join(LOCAL_DEPLOY_DIR, key);
+    await fs.mkdir(path.dirname(destination), { recursive: true });
+    await fs.writeFile(destination, buffer);
+    return;
   }
-}
-
-async function listS3Games() {
   const client = new S3Client({ region: process.env.S3_REGION || 'ap-northeast-2' });
-  const listed = await client.send(new ListObjectsV2Command({
-    Bucket: process.env.S3_BUCKET,
-    Prefix: 'games/',
-    MaxKeys: 1000,
-  }));
-  const games = await Promise.all((listed.Contents || []).flatMap((object) => {
-    if (!object.Key) return [];
-    return [client.send(new HeadObjectCommand({
-      Bucket: process.env.S3_BUCKET,
-      Key: object.Key,
-    })).then((head) => {
-      const metadata = head.Metadata || {};
-      return {
-        key: object.Key,
-        url: publicUrl(object.Key),
-        name: decodeMetadataValue(metadata.name),
-        affiliation: decodeMetadataValue(metadata.affiliation),
-        category: normalizeCategory(metadata.category, true),
-        uploadedAt: metadata.uploadedat || object.LastModified?.toISOString() || '',
-      };
-    }).catch(() => ({
-      key: object.Key,
-      url: publicUrl(object.Key),
-      name: UNKNOWN_METADATA,
-      affiliation: UNKNOWN_METADATA,
-      category: DEFAULT_CATEGORY,
-      uploadedAt: object.LastModified?.toISOString() || '',
-    }))];
-  }));
-  return sortGames(games);
+  await client.send(new PutObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key, Body: buffer, ContentType: 'text/html; charset=utf-8', Metadata: metadata }));
 }
-
-async function listGames() {
-  return process.env.S3_BUCKET ? listS3Games() : listLocalGames();
-}
-
-async function appendUploadLog(entry) {
-  await fs.appendFile(UPLOAD_LOG, `${JSON.stringify(entry)}\n`, 'utf8');
-}
-
-async function saveLocally(key, buffer) {
-  const destination = path.join(LOCAL_DEPLOY_DIR, key);
-  await fs.mkdir(path.dirname(destination), { recursive: true });
-  await fs.writeFile(destination, buffer);
-}
-
-async function saveToS3(key, buffer, metadata) {
-  const client = new S3Client({ region: process.env.S3_REGION || 'ap-northeast-2' });
-  await client.send(new PutObjectCommand({
-    Bucket: process.env.S3_BUCKET,
-    Key: key,
-    Body: buffer,
-    ContentType: 'text/html; charset=utf-8',
-    Metadata: metadata,
-  }));
-}
-
-async function storeUpload({ key, buffer, affiliation, category, name, uploadedAt }) {
-  const metadata = {
-    affiliation: encodeMetadataValue(affiliation),
-    category: encodeMetadataValue(category),
-    name: encodeMetadataValue(name),
-    uploadedAt,
-  };
-  if (process.env.S3_BUCKET) {
-    await saveToS3(key, buffer, metadata);
-    try {
-      await appendUploadLog({ affiliation, category, name, key, url: publicUrl(key), uploadedAt });
-    } catch (error) {
-      console.warn('업로드 로그 기록 실패:', error);
-    }
-  } else {
-    await saveLocally(key, buffer);
-    await appendUploadLog({ affiliation, category, name, key, url: publicUrl(key), uploadedAt });
-  }
-}
-
-async function getContent(key) {
+async function getObject(key) {
   if (!process.env.S3_BUCKET) return fs.readFile(path.join(LOCAL_DEPLOY_DIR, key));
   const client = new S3Client({ region: process.env.S3_REGION || 'ap-northeast-2' });
   const response = await client.send(new GetObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }));
   if (!response.Body) throw Object.assign(new Error('콘텐츠 본문이 없습니다.'), { code: 'NoSuchKey' });
   return Buffer.from(await response.Body.transformToByteArray());
 }
-
+function feedbackClient() { return DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.S3_REGION || 'ap-northeast-2' })); }
 async function saveFeedback(entry) {
-  if (!process.env.FEEDBACK_TABLE) {
-    await fs.appendFile(LOCAL_FEEDBACK_LOG, `${JSON.stringify(entry)}\n`, 'utf8');
-    return;
-  }
-  const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.S3_REGION || 'ap-northeast-2' }));
-  await client.send(new PutCommand({ TableName: process.env.FEEDBACK_TABLE, Item: entry }));
+  if (!process.env.FEEDBACK_TABLE) return fs.appendFile(LOCAL_FEEDBACK_LOG, `${JSON.stringify(entry)}\n`, 'utf8');
+  await feedbackClient().send(new PutCommand({ TableName: process.env.FEEDBACK_TABLE, Item: entry }));
 }
-
-async function listFeedback(key) {
+async function listFeedback(contentId) {
   if (!process.env.FEEDBACK_TABLE) {
-    try {
-      return parseFeedbackLog(await fs.readFile(LOCAL_FEEDBACK_LOG, 'utf8'), key);
-    } catch (error) {
-      if (error.code === 'ENOENT') return [];
-      throw error;
-    }
+    try { return parseFeedbackLog(await fs.readFile(LOCAL_FEEDBACK_LOG, 'utf8'), contentId); }
+    catch (error) { if (error.code === 'ENOENT') return []; throw error; }
   }
-  const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.S3_REGION || 'ap-northeast-2' }));
-  const response = await client.send(new QueryCommand({
-    TableName: process.env.FEEDBACK_TABLE,
-    KeyConditionExpression: 'contentKey = :key',
-    ExpressionAttributeValues: { ':key': key },
-    ScanIndexForward: true,
-  }));
+  const response = await feedbackClient().send(new QueryCommand({ TableName: process.env.FEEDBACK_TABLE, KeyConditionExpression: 'contentKey = :id', ExpressionAttributeValues: { ':id': contentId }, ScanIndexForward: true }));
   return response.Items || [];
 }
 
@@ -279,113 +106,73 @@ function createApp() {
   app.get('/api/categories', (_req, res) => res.json({ categories: CATEGORIES }));
   app.get('/api/games', async (req, res, next) => {
     try {
-      const games = await listGames();
-      return res.json({ games: filterGames(games, req.query) });
-    } catch (error) {
-      return next(error);
-    }
+      const sort = req.query.sort === 'likes' ? 'likes' : 'latest';
+      const games = filterGames(await listContents(), { cohort: req.query.cohort, category: req.query.category });
+      return res.json({ games: sortGames(games, sort) });
+    } catch (error) { return next(error); }
+  });
+  app.get('/api/content', async (req, res, next) => {
+    if (!isValidContentId(req.query.id)) return res.sendStatus(404);
+    try { const content = await getRegisteredContent(req.query.id); return content ? res.json({ content }) : res.sendStatus(404); }
+    catch (error) { return next(error); }
   });
   app.get('/play/*splat', async (req, res, next) => {
     const key = Array.isArray(req.params.splat) ? req.params.splat.join('/') : req.params.splat;
     if (!isValidContentKey(key)) return res.sendStatus(404);
-    try {
-      return res.type('html').send(await getContent(key));
-    } catch (error) {
-      if (error.code === 'ENOENT' || error.code === 'NoSuchKey' || error.name === 'NoSuchKey') return res.sendStatus(404);
-      return next(error);
-    }
+    try { return res.type('html').send(await getObject(key)); }
+    catch (error) { if (error.code === 'ENOENT' || error.code === 'NoSuchKey' || error.name === 'NoSuchKey') return res.sendStatus(404); return next(error); }
   });
   app.get('/api/feedback', async (req, res, next) => {
-    const { key } = req.query;
-    if (!isValidContentKey(key)) return res.sendStatus(404);
-    try {
-      return res.json({ feedback: await listFeedback(key) });
-    } catch (error) {
-      return next(error);
-    }
+    if (!isValidContentId(req.query.id)) return res.sendStatus(404);
+    try { return res.json({ feedback: await listFeedback(req.query.id) }); }
+    catch (error) { return next(error); }
   });
   app.post('/api/feedback', async (req, res, next) => {
-    const { key } = req.body || {};
-    if (!isValidContentKey(key)) return res.sendStatus(404);
+    if (!isValidContentId(req.body?.contentId)) return res.sendStatus(404);
     const result = validateFeedbackInput(req.body || {});
     if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
-    const entry = {
-      contentKey: key,
-      createdAt: new Date().toISOString(),
-      nickname: result.nickname,
-      message: result.message,
-    };
-    try {
-      await saveFeedback(entry);
-      return res.status(201).json({ feedback: entry });
-    } catch (error) {
-      return next(error);
-    }
+    const entry = { contentKey: req.body.contentId, createdAt: new Date().toISOString(), nickname: result.nickname, message: result.message };
+    try { await saveFeedback(entry); return res.status(201).json({ feedback: entry }); }
+    catch (error) { return next(error); }
   });
   app.get('/deployed/*splat', async (req, res, next) => {
     try {
       const key = Array.isArray(req.params.splat) ? req.params.splat.join('/') : req.params.splat;
-      const filePath = path.join(LOCAL_DEPLOY_DIR, key);
-      if (!filePath.startsWith(`${LOCAL_DEPLOY_DIR}${path.sep}`)) return res.sendStatus(404);
-      const contents = await fs.readFile(filePath);
-      return res.type('html').send(contents);
-    } catch (error) {
-      if (error.code === 'ENOENT') return res.sendStatus(404);
-      return next(error);
-    }
+      if (!isValidContentKey(key)) return res.sendStatus(404);
+      return res.sendFile(path.join(LOCAL_DEPLOY_DIR, key));
+    } catch (error) { return next(error); }
   });
   app.post('/api/upload', upload.single('file'), async (req, res, next) => {
+    const result = validateUploadInput({ ...req.body, file: req.file });
+    if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
     try {
-      const result = validateUploadInput({ ...req.body, file: req.file });
-      if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
-      const key = createObjectKey();
+      const existing = await findByIdentity(result);
+      if (existing && !verifyPassword(req.body.password, existing.passwordHash, existing.salt)) {
+        return res.status(403).json({ error: '이미 등록된 이름입니다. 비밀번호가 맞지 않아요.' });
+      }
+      const contentId = existing?.contentId || newContentId();
+      const version = existing ? existing.latestVersion + 1 : 1;
+      const key = createVersionKey(contentId, version);
       const uploadedAt = new Date().toISOString();
-      await storeUpload({
-        key,
-        buffer: req.file.buffer,
-        affiliation: result.affiliation,
-        category: result.category,
-        name: result.name,
-        uploadedAt,
-      });
-      const directUrl = publicUrl(key);
-      return res.status(201).json({
-        url: viewerUrl(req, key),
-        directUrl,
-        key,
-        uploadedAt,
-      });
+      const credentials = existing ? { passwordHash: existing.passwordHash, salt: existing.salt } : hashPassword(req.body.password);
+      const item = {
+        contentKey: `content#${contentId}`, createdAt: 'meta', contentId,
+        name: result.name, affiliation: result.affiliation, category: result.category,
+        ...credentials, latestVersion: version, latestKey: key, likes: existing?.likes || 0,
+        createdAt2: existing?.createdAt2 || uploadedAt, updatedAt: uploadedAt,
+      };
+      await storeObject(key, req.file.buffer, { contentid: contentId, version: String(version) });
+      await saveRegistryItem(item);
+      return res.status(201).json({ url: viewerUrl(req, contentId), directUrl: publicUrl(key), contentId, version, uploadedAt });
     } catch (error) { return next(error); }
   });
   app.use((error, _req, res, _next) => {
-    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: '파일 크기는 1MB 이하여야 합니다.' });
-    console.error(error);
-    return res.status(500).json({ error: '업로드 처리 중 오류가 발생했습니다.' });
+    if (error.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: '파일 크기는 1MB 이하여야 합니다.' });
+    console.error('요청 처리 실패:', error);
+    return res.status(500).json({ error: '서버 처리 중 오류가 발생했습니다.' });
   });
   return app;
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-
-module.exports = {
-  CATEGORIES,
-  COHORTS,
-  CONTENT_KEY_PATTERN,
-  DEFAULT_CATEGORY,
-  MAX_FILE_SIZE,
-  UNKNOWN_METADATA,
-  createApp,
-  createObjectKey,
-  decodeMetadataValue,
-  encodeMetadataValue,
-  filterGames,
-  isValidContentKey,
-  normalizeCategory,
-  parseFeedbackLog,
-  parseUploadLog,
-  publicUrl,
-  sortGames,
-  validateFeedbackInput,
-  validateUploadInput,
-  viewerUrl,
-};
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, publicUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
