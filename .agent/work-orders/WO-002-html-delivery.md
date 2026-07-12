@@ -1,5 +1,5 @@
 # WO-002: html-delivery 업로드·배포 운영 프로그램
-상태: 대기
+상태: 검증 대기
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/002` 브랜치 (README 규칙)
 

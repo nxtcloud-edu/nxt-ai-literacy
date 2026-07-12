@@ -1,14 +1,14 @@
 # Current State
 
-Updated: 2026-07-12 15:05 KST
+Updated: 2026-07-12 15:08 KST
 
 ## Active owners
-- Hermes (Coder): WO-002 진행 중 — html-delivery 업로드·배포 운영 프로그램 (`wo/002` 브랜치)
-- Claude (Planner): WO-001 검증·머지 완료, WO-002 완료 신호 대기 (워처 가동)
+- Hermes (Coder): WO-002 구현 완료, 검증 대기 (`wo/002` 브랜치)
+- Claude (Planner): DRY_RUN 실측 검증 및 머지 판정 대기
 
 ## Last verified repo state
-- Branch: main / HEAD: WO-001 머지(f085d76) 이후 검증 기록 커밋
-- 검증: run-game ver1 — 코드 검토 + 브라우저 실측(JS 프레임 펌핑 전 사이클) + 사람 플레이 확인 통과
+- Branch: wo/002 / WO-002 구현·DRY_RUN 검증·저널 커밋 완료
+- 검증: `npm test` 5건 통과, health/upload/실패 3케이스/발급 URL 접속 curl 실측 통과
 
 ## Completed
 - 협업 인프라 셋업 (저널·명령서 채널·워크트리 게이트·tmux 세션)
