@@ -55,6 +55,15 @@ test('갤러리는 필터와 최신순 정렬을 적용한다', () => {
   assert.deepEqual(sortGames(games).map((x) => x.contentId), ['22222222', '11111111']);
 });
 
+test('갤러리는 추천순에서 추천 수와 최신 업데이트를 차례로 비교한다', () => {
+  const games = [
+    { contentId: '11111111', updatedAt: '2026-01-01T00:00:00Z', likes: 2 },
+    { contentId: '22222222', updatedAt: '2026-01-03T00:00:00Z', likes: 5 },
+    { contentId: '33333333', updatedAt: '2026-01-02T00:00:00Z', likes: 5 },
+  ];
+  assert.deepEqual(sortGames(games, 'likes').map((x) => x.contentId), ['22222222', '33333333', '11111111']);
+});
+
 test('피드백 검증과 contentId별 오름차순 파싱을 유지한다', () => {
   assert.equal(validateFeedbackInput({ message: ' ' }).errors[0], '피드백은 1~500자로 입력하세요.');
   const id = '12345678';

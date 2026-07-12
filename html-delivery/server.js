@@ -5,7 +5,7 @@ const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
-const { findByIdentity, getContent: getRegisteredContent, hashPassword, listContents, newContentId, saveRegistryItem, verifyPassword } = require('./registry');
+const { findByIdentity, getContent: getRegisteredContent, hashPassword, incrementLike, listContents, newContentId, saveRegistryItem, verifyPassword } = require('./registry');
 
 const PORT = Number(process.env.PORT || 3210);
 const MAX_FILE_SIZE = 1024 * 1024;
@@ -164,6 +164,13 @@ function createApp() {
       await storeObject(key, req.file.buffer, { contentid: contentId, version: String(version) });
       await saveRegistryItem(item);
       return res.status(201).json({ url: viewerUrl(req, contentId), directUrl: publicUrl(key), contentId, version, uploadedAt });
+    } catch (error) { return next(error); }
+  });
+  app.post('/api/like', async (req, res, next) => {
+    if (!isValidContentId(req.body?.contentId)) return res.sendStatus(404);
+    try {
+      const likes = await incrementLike(req.body.contentId);
+      return likes === null ? res.sendStatus(404) : res.json({ likes });
     } catch (error) { return next(error); }
   });
   app.use((error, _req, res, _next) => {
