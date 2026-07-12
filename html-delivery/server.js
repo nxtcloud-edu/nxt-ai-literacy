@@ -32,7 +32,7 @@ function createObjectKey(now = new Date()) {
 
 function publicUrl(key) {
   const baseUrl = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
-  return `${baseUrl}/deployed/${key}`;
+  return process.env.S3_BUCKET ? `${baseUrl}/${key}` : `${baseUrl}/deployed/${key}`;
 }
 
 function encodeMetadataValue(value) {
@@ -108,4 +108,4 @@ function createApp() {
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
 
-module.exports = { MAX_FILE_SIZE, createApp, createObjectKey, encodeMetadataValue, validateUploadInput };
+module.exports = { MAX_FILE_SIZE, createApp, createObjectKey, encodeMetadataValue, publicUrl, validateUploadInput };

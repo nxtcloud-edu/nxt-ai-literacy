@@ -1,14 +1,14 @@
 # Current State
 
-Updated: 2026-07-12 15:30 KST
+Updated: 2026-07-12 15:23 KST
 
 ## Active owners
-- Hermes (Coder): WO-003 진행 중 — Terraform 인프라 (`wo/003` 브랜치)
-- Claude (Planner): WO-002 완료 처리, WO-003 완료 신호 대기 (워처 가동)
+- Hermes (Coder): WO-003 구현·검증 완료, 검증 대기 (`wo/003` 브랜치)
+- Claude (Planner): Terraform validate 결과 재검증 및 머지 판정 대기
 
 ## Last verified repo state
-- Branch: wo/002 / S3 메타데이터·BPA 수정·저널 커밋 완료
-- 검증: `npm test` 6건 통과, provision 스크립트 `bash -n` 통과, 미존재 배포 키 HTTP 404 확인
+- Branch: wo/003 / Terraform·publicUrl 구현·저널 커밋 완료
+- 검증: Terraform 1.5.7 `init -backend=false`, `fmt -check`, `validate` 통과; `npm test` 7건 통과
 
 ## Completed
 - 협업 인프라 셋업 (저널·명령서 채널·워크트리 게이트·tmux 세션)
