@@ -432,3 +432,25 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 검증자: plan 요약 사용자 보고 → 승인 시 apply → 실배포 E2E 검증
+
+---
+
+## 2026-07-12 16:00 KST — claude (Planner/Verifier) — 인프라 apply + 네트워크 장애 진단 + WO-004 발행
+
+### Intent
+- 사용자 승인으로 terraform apply, 실배포 E2E 검증, 장애 진단
+
+### Commands / verification
+- terraform plan(10 add) → 사용자 승인 → apply 완료: EC2 3.38.115.21, 버킷 nxt-ai-literacy-games
+- 헬스체크 폴링 5.5분 타임아웃 → SSM 진단: cloud-init 46초 성공, 서비스 active, node-20 :80 리스닝 정상
+  (nodejs20-npm·명시 경로 수정이 실배포에서 검증됨)
+- SG(80/0.0.0.0/0)·NACL(allow all) 정상 → 라우트 테이블에서 원인 발견:
+  subnet-05e9fbd64f66c152e의 명시 라우트가 0.0.0.0/0 → NAT 인스턴스(i-0a6166032f18d686a) — 비대칭 라우팅
+- 안전 서브넷 4개 식별 (메인 라우트 테이블=IGW): subnet-0b0dd8491ea3121dd(2a) 외 3개
+
+### Decisions / assumptions
+- WO-004 발행: subnet_id 변수화 (환경 잔재는 코드가 아니라 배포 설정으로 대응)
+- apply 후 재배포 시 인스턴스 교체 예상 (subnet 변경 = 강제 재생성)
+
+### Handoff
+- Hermes: wo/004 수행 → 검증자: tfvars에 안전 서브넷 지정 후 재apply → E2E 재검증
