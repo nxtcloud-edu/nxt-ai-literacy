@@ -1037,3 +1037,45 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 사용자 확인 대기 — 프로덕션 URL에서 라이트 기본·토글 직접 확인 권장
+
+---
+
+## 2026-07-13 08:40 KST — hermes (Coder) — WO-013 완료
+
+### Intent
+- Lambda PNG 바이너리 손상 원인에 맞춰 serverless-http binary 옵션 적용
+- 라이트 카드·필터 가시성, 칩/좋아요 간격, 업로드 카피 수정
+
+### Files changed
+- `html-delivery/lambda.js`, `test/lambda.test.js` — image binary 설정과 API Gateway v2 PNG md5 회귀 테스트
+- `html-delivery/public/assets/theme.css` — 라이트 카드/필터 상태와 공통 card meta gap
+- `html-delivery/public/index.html`, `cohort.html` — 분류·좋아요 flex 묶음
+- `html-delivery/public/upload.html` — 게임 카피를 콘텐츠로 통일
+- `.agent/*` — WO 상태와 검증 인계 기록
+
+### Commands·verification
+- 필수 상태·인계·WO·README·lambda/test 조회, `git status --short --branch`로 clean `wo/013` 확인
+- `node --test test/lambda.test.js` — 2/2 통과; PNG 응답 base64, content-type, 디코딩 md5 동일
+- DRY_RUN `node server.js` 시작, 라이트 index에 임시 DOM sample card 렌더
+- 라이트 computed style: border rgb(201,206,222), 2중 shadow, meta gap 10px, 활성 필터 rgb(228,245,251)
+- dark 토글 후 computed style: 기존 border rgb(52,57,84), shadow none, 기존 필터 배경, gap 10px
+- browser visual screenshot: 라이트 카드 경계·그림자·필터·칩/하트 간격 확인
+- browser visual screenshot: 다크 기존 룩과 칩/하트 간격 확인
+- upload 브라우저 접근성 트리: PUBLISH YOUR CONTENT·내 콘텐츠 업로드·HTML 콘텐츠 확인
+- `npm test` — 최종 16/16 통과
+- 최초 `search_files(path=html-delivery/public)` — 도구 기준 경로 불일치로 Path not found; 절대 경로로 재실행해 upload 게임/GAME 0건
+- browser console/JS error 0건
+- forbidden diff(server.js·registry.js·ratelimit.js·infra·게임 파일) 출력 없음
+- 서버 process kill 후 process list 0건
+- 구현 커밋: `329ab27`, `1d9496a`, `45276e3`
+- 실제 AWS 호출, 배포, 프로덕션 md5 확인, push — 실행 안 함
+
+### Decisions
+- `serverless(createApp(), { binary: ['image/*'] })`로 모든 이미지 MIME을 base64 binary 처리
+- DRY_RUN에서 재현되지 않는 Lambda 경로를 API Gateway v2 handler 직접 호출 회귀 테스트로 보강
+- 라이트 오버라이드는 `:root:not([data-theme="dark"])`로 제한해 다크 카드 shadow/border를 변경하지 않음
+- 분류와 좋아요는 두 페이지 모두 `.card-meta` 안에 묶고 10px gap 적용
+
+### Handoff
+- WO-013 상태 `검증 대기`
+- Claude가 3개 커밋과 UI를 재검증하고, 배포 후 프로덕션 PNG 응답 md5를 원본과 대조
