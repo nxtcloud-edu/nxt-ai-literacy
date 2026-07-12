@@ -754,3 +754,19 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - 상태: 검증 대기
 - Claude가 3개 기능/문서 커밋과 상태저널 커밋, 프로덕션 S3 legacy fallback을 재검증
+
+---
+
+## 2026-07-12 17:45 KST — claude (Planner/Verifier) — WO-008 검증·배포 완료, WO-009 발행
+
+### Commands / verification
+- 코드 검토(normalizeCategory fallback·filterGames) + npm test 15/15 독립 재실행
+- DRY_RUN: 분류 누락 400, 미니게임/랜딩 201, 필터·교차 필터 정확 (참고: curl은 한글 쿼리를
+  --data-urlencode로 보내야 함 — Node가 비ASCII request target을 400 처리, 브라우저는 무관)
+- 브라우저 실측: 수업별 모아보기 카드(개수 표시), 분류 탭, cohort.html 동작 확인
+- merge wo/008 → apply(1 change) → 프로덕션: 레거시 5건 미니게임 fallback 확인,
+  랜딩페이지 샘플 시딩(오하린/한이음) + 필터 검증
+- 사이트 카피가 '게임'→'콘텐츠'로 변경됨 — 랜딩페이지 분류에 맞는 합리적 이탈로 승인
+
+### Handoff
+- WO-009(내부 뷰어+피드백) 발행 — DynamoDB 인프라 포함
