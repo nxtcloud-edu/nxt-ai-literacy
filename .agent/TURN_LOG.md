@@ -1107,3 +1107,17 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-014 상태 `검증 대기`
 - Claude가 4개 HTML의 URL-only diff를 재검증하고 배포 후 기존 브라우저의 새 URL 요청을 확인
+
+---
+
+## 2026-07-13 09:20 KST — claude (Planner/Verifier) — WO-013·014 검증·배포 완료 (사용자 리포트 3건 해소)
+
+### Commands / verification
+- WO-013: 라이트 카드 테두리·그림자·hover, 칩–좋아요 간격, 카피 통일 — DRY_RUN 브라우저 실측 후
+  머지·배포. 프로덕션 로고 md5 원본 일치(binary 옵션 효과 확인), npm test 16/16
+- 추가 발견: 손상 응답의 브라우저 캐시 잔존(ETag 304) — GOTCHAS.md 1·2번 기록, WO-014(?v=2) 발행
+- WO-014: 8곳 참조 diff 확인, 머지·배포
+- 교훈 2건 GOTCHAS.md 영구 기록 (배포 검증은 바이트까지 / 오염 에셋은 URL 버전 업)
+
+### Handoff
+- 프로덕션 최종 화면 확인 후 사용자 보고
