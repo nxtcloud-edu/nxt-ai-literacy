@@ -1,4 +1,4 @@
-# nxt-ai-literacy — 에이전트 공통 규칙
+# nxt-edu-html-collection — 에이전트 공통 규칙
 
 ## 멀티 에이전트 협업 프로토콜 (필수)
 
