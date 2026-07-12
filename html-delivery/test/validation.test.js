@@ -1,12 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  CATEGORIES,
   COHORTS,
+  DEFAULT_CATEGORY,
   MAX_FILE_SIZE,
   UNKNOWN_METADATA,
   createObjectKey,
   decodeMetadataValue,
   encodeMetadataValue,
+  filterGames,
+  normalizeCategory,
   parseUploadLog,
   publicUrl,
   sortGames,
@@ -18,30 +22,38 @@ function file(name = 'game.html', size = 10) {
 }
 
 test('정상 입력은 trim 후 통과한다', () => {
-  const result = validateUploadInput({ affiliation: `  ${COHORTS[0]} `, name: ' 홍길동 ', file: file() });
+  const result = validateUploadInput({ affiliation: `  ${COHORTS[0]} `, category: ` ${CATEGORIES[0]} `, name: ' 홍길동 ', file: file() });
   assert.deepEqual(result.errors, []);
   assert.equal(result.affiliation, COHORTS[0]);
+  assert.equal(result.category, CATEGORIES[0]);
   assert.equal(result.name, '홍길동');
 });
 
 test('등록되지 않은 코호트는 거부한다', () => {
-  const result = validateUploadInput({ affiliation: '2026-다른수업', name: '홍길동', file: file() });
+  const result = validateUploadInput({ affiliation: '2026-다른수업', category: CATEGORIES[0], name: '홍길동', file: file() });
   assert.equal(result.errors[0], '등록된 수업(코호트)을 선택하세요.');
 });
 
+test('분류 누락 또는 미등록 분류는 거부한다', () => {
+  const missing = validateUploadInput({ affiliation: COHORTS[0], name: '홍길동', file: file() });
+  const invalid = validateUploadInput({ affiliation: COHORTS[0], category: '웹앱', name: '홍길동', file: file() });
+  assert.equal(missing.errors[0], '분류를 선택하세요.');
+  assert.equal(invalid.errors[0], '분류를 선택하세요.');
+});
+
 test('비HTML 파일은 거부한다', () => {
-  const result = validateUploadInput({ affiliation: COHORTS[0], name: '홍길동', file: file('game.txt') });
+  const result = validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '홍길동', file: file('game.txt') });
   assert.match(result.errors[0], /HTML/);
 });
 
 test('1MB 초과 파일은 거부한다', () => {
-  const result = validateUploadInput({ affiliation: COHORTS[1], name: '홍길동', file: file('game.html', MAX_FILE_SIZE + 1) });
+  const result = validateUploadInput({ affiliation: COHORTS[1], category: CATEGORIES[1], name: '홍길동', file: file('game.html', MAX_FILE_SIZE + 1) });
   assert.match(result.errors[0], /1MB/);
 });
 
 test('필드 누락과 공백은 거부한다', () => {
   const result = validateUploadInput({ affiliation: ' ', name: '', file: null });
-  assert.equal(result.errors.length, 3);
+  assert.equal(result.errors.length, 4);
 });
 
 test('키는 ASCII games 경로와 html 확장자를 사용한다', () => {
@@ -60,6 +72,23 @@ test('메타데이터 누락 또는 디코딩 실패는 알 수 없음으로 표
   assert.equal(decodeMetadataValue('%E0%A4%A'), UNKNOWN_METADATA);
 });
 
+test('기존 분류 없는 항목과 잘못된 분류는 미니게임으로 간주한다', () => {
+  assert.equal(normalizeCategory(undefined), DEFAULT_CATEGORY);
+  assert.equal(normalizeCategory('기타'), DEFAULT_CATEGORY);
+  assert.equal(normalizeCategory(encodeMetadataValue(CATEGORIES[1]), true), CATEGORIES[1]);
+});
+
+test('코호트와 분류 필터를 함께 적용한다', () => {
+  const games = [
+    { key: 'a', affiliation: COHORTS[0], category: CATEGORIES[0] },
+    { key: 'b', affiliation: COHORTS[0], category: CATEGORIES[1] },
+    { key: 'c', affiliation: COHORTS[1], category: CATEGORIES[1] },
+  ];
+  assert.deepEqual(filterGames(games, { category: CATEGORIES[1] }).map((game) => game.key), ['b', 'c']);
+  assert.deepEqual(filterGames(games, { cohort: COHORTS[0], category: CATEGORIES[1] }).map((game) => game.key), ['b']);
+  assert.deepEqual(filterGames(games), games);
+});
+
 test('게임은 업로드 시각 내림차순으로 정렬한다', () => {
   const games = sortGames([
     { key: 'old', uploadedAt: '2026-07-12T01:00:00.000Z' },
@@ -73,11 +102,13 @@ test('DRY_RUN 로그는 손상된 줄을 건너뛰고 최신순으로 파싱한�
   const contents = [
     JSON.stringify({ key: 'games/old.html', url: '/old', name: '가', affiliation: COHORTS[0], uploadedAt: '2026-07-12T01:00:00.000Z' }),
     '{broken-json',
-    JSON.stringify({ key: 'games/new.html', url: '/new', name: '나', affiliation: COHORTS[1], uploadedAt: '2026-07-12T02:00:00.000Z' }),
+    JSON.stringify({ key: 'games/new.html', url: '/new', name: '나', affiliation: COHORTS[1], category: CATEGORIES[1], uploadedAt: '2026-07-12T02:00:00.000Z' }),
   ].join('\n');
   const games = parseUploadLog(contents);
   assert.deepEqual(games.map((game) => game.key), ['games/new.html', 'games/old.html']);
   assert.equal(games[0].affiliation, COHORTS[1]);
+  assert.equal(games[0].category, CATEGORIES[1]);
+  assert.equal(games[1].category, DEFAULT_CATEGORY);
 });
 
 test('S3 모드 URL은 버킷 웹사이트 루트에 직접 연결한다', () => {

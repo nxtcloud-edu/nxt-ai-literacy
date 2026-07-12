@@ -13,22 +13,31 @@ const {
 const PORT = Number(process.env.PORT || 3210);
 const MAX_FILE_SIZE = 1024 * 1024;
 const COHORTS = ['2026-고대세종-ai', '2026-한이음-ai-중급'];
+const CATEGORIES = ['미니게임', '랜딩페이지'];
+const DEFAULT_CATEGORY = CATEGORIES[0];
 const UNKNOWN_METADATA = '알 수 없음';
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');
 const UPLOAD_LOG = path.join(__dirname, 'uploads.log.jsonl');
 
-function validateUploadInput({ affiliation, name, file }) {
+function validateUploadInput({ affiliation, category, name, file }) {
   const errors = [];
   const trimmedAffiliation = typeof affiliation === 'string' ? affiliation.trim() : '';
+  const trimmedCategory = typeof category === 'string' ? category.trim() : '';
   const trimmedName = typeof name === 'string' ? name.trim() : '';
   if (!COHORTS.includes(trimmedAffiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
+  if (!CATEGORIES.includes(trimmedCategory)) errors.push('분류를 선택하세요.');
   if (!trimmedName || trimmedName.length > 40) errors.push('이름은 1~40자로 입력하세요.');
   if (!file) errors.push('HTML 파일을 선택하세요.');
   else {
     if (path.extname(file.originalname).toLowerCase() !== '.html') errors.push('HTML 파일만 업로드할 수 있습니다.');
     if (file.size > MAX_FILE_SIZE) errors.push('파일 크기는 1MB 이하여야 합니다.');
   }
-  return { errors, affiliation: trimmedAffiliation, name: trimmedName };
+  return {
+    errors,
+    affiliation: trimmedAffiliation,
+    category: trimmedCategory,
+    name: trimmedName,
+  };
 }
 
 function createObjectKey(now = new Date()) {
@@ -55,6 +64,18 @@ function decodeMetadataValue(value) {
   }
 }
 
+function normalizeCategory(value, encoded = false) {
+  const decoded = encoded ? decodeMetadataValue(value) : value;
+  return CATEGORIES.includes(decoded) ? decoded : DEFAULT_CATEGORY;
+}
+
+function filterGames(games, { cohort, category } = {}) {
+  return games.filter((game) => (
+    (!cohort || game.affiliation === cohort)
+    && (!category || game.category === category)
+  ));
+}
+
 function sortGames(games) {
   return [...games].sort((a, b) => {
     const aTime = Date.parse(a.uploadedAt) || 0;
@@ -76,6 +97,7 @@ function parseUploadLog(contents) {
           url: entry.url || publicUrl(entry.key),
           name: entry.name || UNKNOWN_METADATA,
           affiliation: entry.affiliation || UNKNOWN_METADATA,
+          category: normalizeCategory(entry.category),
           uploadedAt: entry.uploadedAt || '',
         }];
       } catch {
@@ -113,6 +135,7 @@ async function listS3Games() {
         url: publicUrl(object.Key),
         name: decodeMetadataValue(metadata.name),
         affiliation: decodeMetadataValue(metadata.affiliation),
+        category: normalizeCategory(metadata.category, true),
         uploadedAt: metadata.uploadedat || object.LastModified?.toISOString() || '',
       };
     }).catch(() => ({
@@ -120,6 +143,7 @@ async function listS3Games() {
       url: publicUrl(object.Key),
       name: UNKNOWN_METADATA,
       affiliation: UNKNOWN_METADATA,
+      category: DEFAULT_CATEGORY,
       uploadedAt: object.LastModified?.toISOString() || '',
     }))];
   }));
@@ -151,22 +175,23 @@ async function saveToS3(key, buffer, metadata) {
   }));
 }
 
-async function storeUpload({ key, buffer, affiliation, name, uploadedAt }) {
+async function storeUpload({ key, buffer, affiliation, category, name, uploadedAt }) {
   const metadata = {
     affiliation: encodeMetadataValue(affiliation),
+    category: encodeMetadataValue(category),
     name: encodeMetadataValue(name),
     uploadedAt,
   };
   if (process.env.S3_BUCKET) {
     await saveToS3(key, buffer, metadata);
     try {
-      await appendUploadLog({ affiliation, name, key, url: publicUrl(key), uploadedAt });
+      await appendUploadLog({ affiliation, category, name, key, url: publicUrl(key), uploadedAt });
     } catch (error) {
       console.warn('업로드 로그 기록 실패:', error);
     }
   } else {
     await saveLocally(key, buffer);
-    await appendUploadLog({ affiliation, name, key, url: publicUrl(key), uploadedAt });
+    await appendUploadLog({ affiliation, category, name, key, url: publicUrl(key), uploadedAt });
   }
 }
 
@@ -176,9 +201,11 @@ function createApp() {
   app.use(express.static(path.join(__dirname, 'public')));
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.get('/api/cohorts', (_req, res) => res.json({ cohorts: COHORTS }));
-  app.get('/api/games', async (_req, res, next) => {
+  app.get('/api/categories', (_req, res) => res.json({ categories: CATEGORIES }));
+  app.get('/api/games', async (req, res, next) => {
     try {
-      return res.json({ games: await listGames() });
+      const games = await listGames();
+      return res.json({ games: filterGames(games, req.query) });
     } catch (error) {
       return next(error);
     }
@@ -201,7 +228,14 @@ function createApp() {
       if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
       const key = createObjectKey();
       const uploadedAt = new Date().toISOString();
-      await storeUpload({ key, buffer: req.file.buffer, affiliation: result.affiliation, name: result.name, uploadedAt });
+      await storeUpload({
+        key,
+        buffer: req.file.buffer,
+        affiliation: result.affiliation,
+        category: result.category,
+        name: result.name,
+        uploadedAt,
+      });
       return res.status(201).json({ url: publicUrl(key), key, uploadedAt });
     } catch (error) { return next(error); }
   });
@@ -216,13 +250,17 @@ function createApp() {
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
 
 module.exports = {
+  CATEGORIES,
   COHORTS,
+  DEFAULT_CATEGORY,
   MAX_FILE_SIZE,
   UNKNOWN_METADATA,
   createApp,
   createObjectKey,
   decodeMetadataValue,
   encodeMetadataValue,
+  filterGames,
+  normalizeCategory,
   parseUploadLog,
   publicUrl,
   sortGames,
