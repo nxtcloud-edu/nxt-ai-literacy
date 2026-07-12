@@ -1,28 +1,28 @@
 # Handoff
 
 ## Current handoff summary
-WO-007에서 업로드 앱 첫 화면을 랜딩+갤러리로 개편하고, 업로드 폼을 `upload.html`로 분리했다. 코호트는 server.js의 두 상수를 SSOT로 API·검증·UI에 공급하며, S3 갤러리는 ListObjectsV2+HeadObject Metadata로 구성한다.
+WO-008에서 갤러리 탭 축을 코호트에서 콘텐츠 분류(`전체/랜딩페이지/미니게임`)로 교체했다. 코호트는 개수 포함 모아보기 카드와 `cohort.html?c=` 전용 페이지로 이동했고, 업로드 폼에 서버 API 기반 분류 select를 추가했다.
 
 ## First things to do before any next edit
 ```bash
 git status --short --branch
-git log -5 --pretty=format:'%h %s'
+git log -4 --pretty=format:'%h %s'
 ```
 
-## Next recommended project actions
-1. (Hermes) WO-007 완료 신호 확정 — 상태·TURN_LOG 커밋
-2. (Claude) API·UI·IAM·README 커밋 경계와 테스트·Terraform 재검증
-3. (Claude+사용자) main 머지 후 Lambda ZIP 재생성/apply, 프로덕션 갤러리·업로드 E2E
-
 ## Verification evidence
-- `npm test`: 12/12 통과
-- Terraform `fmt -check`, `validate`: 통과
-- curl: health 200, cohorts 200, 미등록 코호트 400, 정상 업로드 201, `/api/games` 즉시 최신 노출, 발급 URL marker HTML 반환
-- 브라우저: 랜딩 CTA·최신 카드·코호트 필터·정확한 빈 상태·카드 클릭·업로드 페이지 select option 2개·갤러리 복귀 링크 확인
-- E2E 서버 종료 및 정확한 fixture key·JSONL entry·`/tmp` 파일 정리 완료
+- `npm test`: 15/15 통과
+- curl: category 누락 400, 미니게임/랜딩페이지 각 201, 분류 필터와 코호트+분류 교차 필터 통과
+- category 없는 legacy JSONL fixture가 `미니게임`으로 노출됨을 runtime 확인
+- 브라우저: 분류 탭 순서, 코호트 카드 개수, 코호트 전용/미등록 빈 상태, 업로드 분류 option 확인
+- 카드 링크는 기존 `target=_blank`, `rel=noopener`, 직접 game URL 유지
+- 서버 종료 및 정확한 E2E artifact/JSONL/temp fixture 정리 완료
+
+## Next recommended project actions
+1. API·UI·README 및 상태저널 커밋 재검증
+2. main 머지 후 Lambda 패키지 재생성/apply
+3. 프로덕션에서 기존 S3 객체 fallback, 분류 업로드·필터·코호트 전용 페이지 E2E
 
 ## Collision risks
-- 기존 로컬 JSONL의 과거 자유 소속 항목은 전체 탭에는 보이나 새 코호트 탭에는 속하지 않음; 서버는 신규 업로드부터 고정 코호트만 허용
-- S3 목록은 설계대로 1000개 단일 호출이며 페이지네이션 UI 없음
-- Function URL이 공개이므로 인증·삭제·수정·좋아요 기능은 범위 밖
-- coder는 Terraform plan/apply, AWS CLI, 프로덕션 접근을 실행하지 않음
+- S3 `category` Metadata 없는 기존 객체는 의도대로 `미니게임`으로 보이므로 실제 콘텐츠 성격과 다를 수 있음
+- 카드 클릭 내부 뷰어는 WO-009 범위이며 이번 변경에서 직접 새 탭 실행을 보존함
+- Terraform·lambda.js·게임 파일은 미수정; cloud plan/apply/AWS 접근 미실행

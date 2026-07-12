@@ -688,3 +688,69 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 사용자 확인 대기: 코호트 명칭, 이정훈 항목 처리 여부
+
+
+---
+
+## 2026-07-12 18:33 KST — hermes (Coder) — WO-008
+
+### Intent
+- 갤러리 탭을 콘텐츠 분류 축으로 교체하고 코호트는 카드·전용 페이지로 분리
+- 업로드에 고정 분류 선택을 추가하며 기존 category 없는 객체는 미니게임으로 보존
+- 카드 직접 새 탭 실행은 WO-009 전까지 유지
+
+### Files changed
+- `html-delivery/server.js`: CATEGORIES SSOT, category 검증·Metadata·fallback, categories API, games cohort/category 필터
+- `html-delivery/test/validation.test.js`: 분류 필수·fallback·교차 필터·JSONL 회귀
+- `html-delivery/public/index.html`: 분류 탭, 코호트 모아보기 카드, 콘텐츠 카드
+- `html-delivery/public/cohort.html`: 코호트 전용 페이지와 동일 분류 탭
+- `html-delivery/public/upload.html`: API 기반 category select
+- `README.md`: 분류 선택 배포 절차
+- `.agent/work-orders/WO-008-category-cohort-pages.md`, `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md`: 상태·인계·완료 기록
+
+### Commands·verification
+- `git status --short --branch`: clean `wo/008` 확인
+- `git log -4 --oneline --decorate`: WO-008 기준 HEAD 확인
+- `npm test` (API 커밋 전): 15/15 통과
+- `git diff --check`: 통과
+- API 파일 스테이징 후 `feat: 콘텐츠 분류와 갤러리 필터 API 추가` 커밋
+- UI Python 정적 계약 검사: category tabs/cohort pages/upload category/card target preserved 통과
+- `git diff --check`: 통과
+- UI 3파일 스테이징 후 `feat: 분류 탭과 코호트 모아보기 추가` 커밋
+- README Python 문구 검사: category upload flow 통과
+- README 스테이징 후 `docs: 콘텐츠 분류 선택 절차 추가` 커밋
+- `node server.js`: DRY_RUN 서버 시작
+- `curl /api/health`: HTTP 200
+- `curl /api/categories`: 미니게임·랜딩페이지 반환
+- `/tmp/wo008-category-e2e.html` marker fixture 생성
+- category 없는 multipart upload: HTTP 400, `분류를 선택하세요.`
+- 미니게임 multipart upload: HTTP 201
+- 랜딩페이지 multipart upload: HTTP 201
+- `/api/games?category=` 두 종류 및 `?cohort=&category=` 교차 응답 저장
+- 최초 Python runtime assertion: 분류·교차 응답은 정상이나 기존 category 없는 로컬 로그가 없어 legacy fixture assertion 실패
+- category 없는 식별 가능한 JSONL fixture 한 줄 append 후 미니게임 API 재호출
+- Python fallback 검사: legacy=미니게임, 신규 미니게임 존재 확인
+- 브라우저 랜딩: 전체/랜딩페이지/미니게임 순서, 코호트 카드 개수 2/1, 카드 3개 확인
+- browser_click 두 번은 success 응답에도 DOM 상태가 안 바뀌어 브라우저 도구 이벤트 이상으로 기록
+- 브라우저 console 오류: 0건
+- DOM click 이벤트 후 랜딩페이지 탭 활성·WO008랜딩 1개 확인
+- 코호트 전용 페이지: 수업명·분류 탭·해당 카드·복귀 링크 확인
+- 미등록 코호트: `등록된 수업을 찾을 수 없습니다.` 및 빈 상태 확인
+- 업로드 페이지: 코호트 2개와 category 미니게임/랜딩페이지 option 확인
+- DRY_RUN 서버 종료
+- 정확한 E2E artifact 2개, JSONL 3개, `/tmp` fixture·응답 정리
+- 최종 `npm test`: 15/15 통과
+- `git diff --name-only 80d680c..HEAD -- infra html-delivery/lambda.js box-game run-game`: 출력 없음
+- `git status --short --branch`: clean `wo/008` 확인
+- Terraform fmt/validate: 실행 안 함(인프라 변경 금지·미수정)
+- Terraform plan/apply, AWS CLI, 프로덕션 접근·기존 S3 객체 수정/삭제: 실행 안 함
+
+### Decisions
+- `CATEGORIES = ['미니게임', '랜딩페이지']`를 서버 SSOT로 두고 `/api/categories`로 UI에 공급
+- category 누락·미등록 업로드는 400; 저장 데이터 누락·잘못된 값은 호환성을 위해 미니게임 fallback
+- index와 cohort 페이지 탭은 서버 `?category=` 필터를 사용하며 코호트 페이지는 `?cohort=`를 함께 사용
+- 카드의 직접 URL, `_blank`, `noopener`를 유지
+
+### Handoff
+- 상태: 검증 대기
+- Claude가 3개 기능/문서 커밋과 상태저널 커밋, 프로덕션 S3 legacy fallback을 재검증
