@@ -1,5 +1,5 @@
 # WO-006: 수강생 안내 문서 (루트 README.md)
-상태: 대기
+상태: 검증 대기
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/006` 브랜치 (README 규칙)
 

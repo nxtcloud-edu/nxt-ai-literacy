@@ -560,3 +560,41 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 남은 산출물: 수강생 안내 문서 (업로드 절차 포함) — WO-006 후보
+
+
+---
+
+## 2026-07-12 16:11 KST — hermes (Coder) — WO-006
+
+### Intent
+- 비개발자 수강생이 게임 받기부터 AI 협업 개선, 배포, 실제 사용자 피드백, 재개선까지 한 문서로 완주할 수 있는 루트 README 작성
+
+### Files changed
+- `README.md` — 지정된 6개 섹션의 수강생 안내 문서 신규 작성
+- `.agent/work-orders/WO-006-student-guide.md` — 상태를 `검증 대기`로 변경
+- `.agent/CURRENT_STATE.md` — WO-005 프로덕션 완료와 WO-006 검증 대기 상태 반영
+- `.agent/HANDOFF.md` — 검증 근거와 다음 안전 액션 반영
+- `.agent/TURN_LOG.md` — 본 완료 기록 append
+
+### Commands / verification
+- `git status --short --branch` — clean `wo/006` 확인
+- `git log -4 --oneline --decorate` — HEAD `3e2d85f`, main 기준 WO-006 발행 커밋 확인
+- `read_file` — AGENTS, CURRENT_STATE, HANDOFF, WO-006, work-order README, 제품 결정 확인
+- `search_files` — 두 게임의 CONFIG 블록·설정값·개선 여지 확인; 게임 파일 2개와 운영자 README 링크 대상 실물 확인
+- `git diff --check` — 통과
+- Python 상대 링크 검증 — 4개 링크 모두 실제 파일과 일치 (`box-game/game-ver1.html`, `run-game/game-ver1.html`, `html-delivery/README.md`, `infra/README.md`)
+- Python 콘텐츠 검증 — 6개 섹션 존재·순서 통과; CONFIG·`(강사 공지)`·최고 점수·1MB 이하·새 URL 필수 문구 확인; `.agent/`·work-orders·Terraform 적용·하드코딩 HTTPS URL 0건
+- `git status --short` — 제품 변경이 신규 `README.md` 1개뿐임을 상태 파일 수정 전 확인
+- `date '+%Y-%m-%d %H:%M %Z'` — 완료 시각 `2026-07-12 16:11 KST` 확인
+- 모든 검증 명령은 긴 `&&` 체인이나 `node -e` 없이 단독 실행
+- 게임 코드·기존 제품 문서 수정, 클라우드·프로덕션 접근, 배포, push — 실행 안 함
+
+### Decisions
+- 게임 다운로드는 GitHub 파일 페이지의 Download raw file 버튼과 브라우저 drag-and-drop 대안까지 비개발자 수준으로 설명
+- CONFIG 설명과 예시 프롬프트를 색·속도 → 최고 점수 → 난이도 상승 → 새 장애물 순으로 배치
+- 시작 전 마우스 입력 오류와 빠른 화면의 약 2배속 현상은 정답 코드 대신 AI와 찾아 고칠 힌트로만 제시
+- 업로드 페이지는 실제 URL 없이 `(강사 공지)`로 표기하고, 운영 내부 사항은 허용된 README 링크 한 줄만 제공
+
+### Handoff
+- WO-006 상태 `검증 대기`
+- Claude가 README 6개 섹션, 링크 4개, 업로드 URL 비하드코딩, 신규 제품 파일 1개 경계를 재검증한 뒤 main 머지 판정
