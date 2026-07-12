@@ -37,3 +37,24 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
   직접 승인. 무인 루프가 필요해지면 사용자 승인 후 --yolo 전환.
 - 게이트 실측: pre-commit 가드 (B) 기존 줄 수정 차단 exit 1 확인, 정상 append 통과 확인.
   main 브랜치는 플래너 워크트리가 점유 중이라 코더 워크트리에서 checkout 자체가 불가 (이중 방어).
+
+---
+
+## 2026-07-12 14:25 KST — claude (Planner) — game-ver1.html 분석
+
+### Intent
+- 사용자 요청으로 untracked 파일 game-ver1.html 파악 (읽기 전용 분석)
+
+### Files changed
+- .agent/TURN_LOG.md — 이 엔트리만
+
+### Commands / verification
+- Read game-ver1.html (186줄 전문) — 실행 테스트는 안 함 (브라우저 미기동)
+
+### Decisions / assumptions
+- 정체: 바닐라 JS 캔버스 "박스 피하기" 게임, CONFIG 블록 분리 구조 — AI 리터러시 교육 실습 소재로 추정 (ver1 = 반복 개선 시리즈 시작점)
+- 발견 이슈: (1) 시작 전 mousemove/touchmove 시 player undefined TypeError (2) delta-time 없음 — 120Hz에서 2배속 (3) 난이도 고정 (4) endGame이 ui.innerHTML 교체로 조작 안내 유실 (5) 최고점수·일시정지 없음
+- 파일은 여전히 untracked — 커밋 여부는 첫 WO에서 사용자 방향에 따라 결정
+
+### Handoff
+- 사용자가 이 게임 기반 작업 방향을 정하면 WO-001 발행
