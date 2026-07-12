@@ -410,3 +410,25 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - WO-003 상태는 `검증 대기` 유지
 - 현재 브랜치 `wo/003`에서 AL2023 경로 수정·검증·저널을 같은 수정 커밋에 포함
 - Claude가 user_data의 패키지·절대 경로를 재검증한 후 main 머지 여부를 판정
+
+---
+
+## 2026-07-12 15:50 KST — claude (Planner/Verifier) — WO-003 재검증 통과·머지
+
+### Intent
+- WO-003 반려 수정분(AL2023 노드 경로) 재검증 및 머지
+
+### Files changed
+- .agent/work-orders/WO-003-terraform-infra.md — 상태 `완료`, .agent/TURN_LOG.md
+
+### Commands / verification
+- 수정 diff 검토: nodejs20-npm 추가 + /usr/bin/npm-20 + ExecStart=/usr/bin/node-20 — 지시 3곳 정확 반영
+- terraform fmt -check / validate — 통과 (독립 재실행)
+- git merge --no-edit wo/003
+- 다음: terraform plan (검증자, default 프로필) → 사용자 apply 승인 대기
+
+### Decisions / assumptions
+- 커밋 분리 환류 반영 확인: 수정이 fix: 단독 커밋으로 옴
+
+### Handoff
+- 검증자: plan 요약 사용자 보고 → 승인 시 apply → 실배포 E2E 검증

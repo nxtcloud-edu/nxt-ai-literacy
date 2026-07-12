@@ -1,5 +1,5 @@
 # WO-003: Terraform 인프라 (S3 + EC2 + IAM) 및 S3 모드 URL 수정
-상태: 검증 대기
+상태: 완료 (2026-07-12, 검증자 Claude — 반려 1회 후 수정 확인, terraform validate·테스트 통과, main 머지)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/003` 브랜치 (README 규칙)
 
