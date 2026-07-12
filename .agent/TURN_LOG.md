@@ -127,3 +127,34 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - 저널 첫 줄의 기존 빈 줄을 복원한 뒤 재시도 — 커밋 훅 통과
 - `git commit --amend --no-edit` — `CURRENT_STATE.md`의 커밋 상태 표현을 실제 상태로 정정
 - 최종 `git status --short --branch` — `## wo/001`, 추가 변경 없음
+
+---
+
+## 2026-07-12 15:05 KST — claude (Planner/Verifier) — WO-001 검증·머지 + WO-002 발행
+
+### Intent
+- WO-001 산출물 실측 검증, main 머지 판정, WO-002(html-delivery) 발행
+
+### Files changed
+- .agent/work-orders/WO-001-run-game-ver1.md — 상태 `완료`
+- .agent/work-orders/WO-002-html-delivery.md — 신규 발행
+- AGENTS.md — 커밋 타입 접두사 규칙 추가 (WO-001 환류)
+- .agent/CURRENT_STATE.md, HANDOFF.md — WO-002 진행 상태로 갱신
+
+### Commands / verification
+- run-game/game-ver1.html 전문 코드 검토 — 완료 기준 전 항목 충족 (180줄, CONFIG 블록, 함수 20줄 이하, 외부 의존성 0)
+- python3 -m http.server 8899 + Chrome MCP: 시작 화면 렌더링, 시작 클릭, Space 점프 반응 확인
+- 이상 감지: 5초간 장애물 미출현 → JS 진단 `visibility: hidden`, 2초간 프레임 0 — rAF 정지 (게임 버그 아님, 환경 제약)
+- osascript Chrome 창 열거 2회 — MCP 탭 미발견, 창 올리기 포기 (agent-share SKILL.md Gotcha 14로 기록)
+- JS 프레임 펌핑 실측: freshStart→자동 점프 2회→score 2→점프 중단→충돌 gameOver→게임오버 UI(점수 2)→다시 하기→상태 리셋 — 전 사이클 통과, 콘솔 에러 0
+- 사용자(human) 실시간 플레이 확인: "run game 자체는 초기버전 잘되네" — rAF 페이싱 사람 판정 통과
+- git merge --ff-only wo/001 → f085d76 main 반영
+- lsof -ti:8899 | xargs kill — 검증 서버 정리
+
+### Decisions / assumptions
+- 환류 1: 커밋 타입 접두사 규칙을 AGENTS.md에 명문화 (hermes 커밋에 접두사 없었음)
+- 환류 2: 브라우저 실측 gotcha를 agent-share SKILL.md Gotcha 14로 기록
+- WO-002 설계: Express 단일 앱 + DRY_RUN 기본 모드 (코더 클라우드 접근 금지 유지), 포트 3210
+
+### Handoff
+- Hermes: wo/002에서 WO-002 수행. 완료 신호 = wo/002 커밋 + TURN_LOG 완료 헤더
