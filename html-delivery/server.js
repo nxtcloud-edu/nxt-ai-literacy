@@ -6,6 +6,7 @@ const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const { findByIdentity, getContent: getRegisteredContent, hashPassword, incrementLike, listContents, newContentId, saveRegistryItem, verifyPassword } = require('./registry');
+const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
 const PORT = Number(process.env.PORT || 3210);
 const MAX_FILE_SIZE = 1024 * 1024;
@@ -99,6 +100,9 @@ async function listFeedback(contentId) {
 function createApp() {
   const app = express();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
+  const likeByContent = createSlidingWindowLimiter({ limit: 3, windowMs: 60_000 });
+  const likeByIp = createSlidingWindowLimiter({ limit: 30, windowMs: 60_000 });
+  const feedbackByIp = createSlidingWindowLimiter({ limit: 5, windowMs: 60_000 });
   app.use(express.json({ limit: '16kb' }));
   app.use(express.static(path.join(__dirname, 'public')));
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
@@ -131,6 +135,7 @@ function createApp() {
     if (!isValidContentId(req.body?.contentId)) return res.sendStatus(404);
     const result = validateFeedbackInput(req.body || {});
     if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
+    if (!feedbackByIp.consume(clientIp(req))) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요.' });
     const entry = { contentKey: req.body.contentId, createdAt: new Date().toISOString(), nickname: result.nickname, message: result.message };
     try { await saveFeedback(entry); return res.status(201).json({ feedback: entry }); }
     catch (error) { return next(error); }
@@ -168,6 +173,10 @@ function createApp() {
   });
   app.post('/api/like', async (req, res, next) => {
     if (!isValidContentId(req.body?.contentId)) return res.sendStatus(404);
+    const ip = clientIp(req);
+    if (!likeByIp.consume(ip) || !likeByContent.consume(`${ip}:${req.body.contentId}`)) {
+      return res.status(429).json({ error: '잠시 후 다시 시도해 주세요.' });
+    }
     try {
       const likes = await incrementLike(req.body.contentId);
       return likes === null ? res.sendStatus(404) : res.json({ likes });
