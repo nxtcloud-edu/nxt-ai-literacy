@@ -9,6 +9,10 @@ aws s3api create-bucket \
   --region "$REGION" \
   --create-bucket-configuration "LocationConstraint=$REGION"
 aws s3 website "s3://$BUCKET" --index-document index.html --error-document error.html
+aws s3api put-public-access-block \
+  --bucket "$BUCKET" \
+  --public-access-block-configuration \
+    BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false
 aws s3api put-bucket-policy --bucket "$BUCKET" --policy "$(cat <<JSON
 {
   "Version": "2012-10-17",

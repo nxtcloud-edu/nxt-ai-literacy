@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { MAX_FILE_SIZE, createObjectKey, validateUploadInput } = require('../server');
+const { MAX_FILE_SIZE, createObjectKey, encodeMetadataValue, validateUploadInput } = require('../server');
 
 function file(name = 'game.html', size = 10) {
   return { originalname: name, size };
@@ -31,4 +31,10 @@ test('필드 누락과 공백은 거부한다', () => {
 test('키는 ASCII games 경로와 html 확장자를 사용한다', () => {
   const key = createObjectKey(new Date('2026-07-12T05:06:07.000Z'));
   assert.match(key, /^games\/20260712050607-[0-9a-f]{4}\.html$/);
+});
+
+test('S3 메타데이터 값은 ASCII URI 인코딩으로 저장한다', () => {
+  const encoded = encodeMetadataValue('서울 1팀/홍길동');
+  assert.equal(encoded, '%EC%84%9C%EC%9A%B8%201%ED%8C%80%2F%ED%99%8D%EA%B8%B8%EB%8F%99');
+  assert.equal(decodeURIComponent(encoded), '서울 1팀/홍길동');
 });

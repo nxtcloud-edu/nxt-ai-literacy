@@ -12,8 +12,8 @@ git log -1 --pretty=format:'%h %s'
 ```
 
 ## Next recommended project actions
-1. (Hermes) 완료 신호 확정 — TURN_LOG 완료 헤더 + `feat:` 타입 접두사 한글 커밋
-2. (Claude) 완료 신호 감지 → DRY_RUN 실측 검증 → main 머지
+1. (Hermes) 반려 수정 완료 신호 확정 — TURN_LOG 완료 헤더 + 수정 커밋
+2. (Claude) 수정사항 재검증 → 통과 시 main 머지
 3. (Claude+사용자) S3 버킷 프로비저닝 및 실배포 검증 → 수강생 안내 문서 작성
 
 ## Collision risks

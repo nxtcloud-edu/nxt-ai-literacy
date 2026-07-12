@@ -35,6 +35,10 @@ function publicUrl(key) {
   return `${baseUrl}/deployed/${key}`;
 }
 
+function encodeMetadataValue(value) {
+  return encodeURIComponent(value);
+}
+
 async function appendUploadLog(entry) {
   await fs.appendFile(UPLOAD_LOG, `${JSON.stringify(entry)}\n`, 'utf8');
 }
@@ -57,7 +61,11 @@ async function saveToS3(key, buffer, metadata) {
 }
 
 async function storeUpload({ key, buffer, affiliation, name, uploadedAt }) {
-  const metadata = { affiliation, name, uploadedAt };
+  const metadata = {
+    affiliation: encodeMetadataValue(affiliation),
+    name: encodeMetadataValue(name),
+    uploadedAt,
+  };
   if (process.env.S3_BUCKET) await saveToS3(key, buffer, metadata);
   else await saveLocally(key, buffer);
   await appendUploadLog({ affiliation, name, key, url: publicUrl(key), uploadedAt });
@@ -75,7 +83,10 @@ function createApp() {
       if (!filePath.startsWith(`${LOCAL_DEPLOY_DIR}${path.sep}`)) return res.sendStatus(404);
       const contents = await fs.readFile(filePath);
       return res.type('html').send(contents);
-    } catch (error) { return next(error); }
+    } catch (error) {
+      if (error.code === 'ENOENT') return res.sendStatus(404);
+      return next(error);
+    }
   });
   app.post('/api/upload', upload.single('file'), async (req, res, next) => {
     try {
@@ -97,4 +108,4 @@ function createApp() {
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
 
-module.exports = { MAX_FILE_SIZE, createApp, createObjectKey, validateUploadInput };
+module.exports = { MAX_FILE_SIZE, createApp, createObjectKey, encodeMetadataValue, validateUploadInput };

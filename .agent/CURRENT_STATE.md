@@ -1,14 +1,14 @@
 # Current State
 
-Updated: 2026-07-12 15:08 KST
+Updated: 2026-07-12 15:13 KST
 
 ## Active owners
-- Hermes (Coder): WO-002 구현 완료, 검증 대기 (`wo/002` 브랜치)
-- Claude (Planner): DRY_RUN 실측 검증 및 머지 판정 대기
+- Hermes (Coder): WO-002 반려 수정 완료, 검증 대기 (`wo/002` 브랜치)
+- Claude (Planner): 수정사항 재검증 및 머지 판정 대기
 
 ## Last verified repo state
-- Branch: wo/002 / WO-002 구현·DRY_RUN 검증·저널 커밋 완료
-- 검증: `npm test` 5건 통과, health/upload/실패 3케이스/발급 URL 접속 curl 실측 통과
+- Branch: wo/002 / S3 메타데이터·BPA 수정·저널 커밋 완료
+- 검증: `npm test` 6건 통과, provision 스크립트 `bash -n` 통과, 미존재 배포 키 HTTP 404 확인
 
 ## Completed
 - 협업 인프라 셋업 (저널·명령서 채널·워크트리 게이트·tmux 세션)

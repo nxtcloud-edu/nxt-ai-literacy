@@ -25,7 +25,7 @@ npm start
 ./scripts/provision-s3.sh <bucket-name> <region>
 ```
 
-S3 객체에는 `affiliation`, `name`, `uploadedAt` Metadata와 `text/html; charset=utf-8` Content-Type이 설정됩니다.
+S3 객체에는 `affiliation`, `name`, `uploadedAt` Metadata와 `text/html; charset=utf-8` Content-Type이 설정됩니다. S3 Metadata는 ASCII 규칙에 맞도록 `encodeURIComponent` 값으로 저장하므로, 운영 도구에서 소속·이름을 표시할 때 `decodeURIComponent`로 복원합니다.
 
 ## API
 
