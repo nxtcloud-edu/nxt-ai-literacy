@@ -1254,3 +1254,18 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-017 상태 `검증 대기`
 - Claude가 코드 리뷰 후 사용자 plan/apply 및 실제 DNS·CloudFront E2E를 수행
+
+---
+
+## 2026-07-13 12:10 KST — claude (Planner/Verifier) — WO-017 검증·배포 완료 (커스텀 도메인 개통)
+
+### Commands / verification
+- 구성 검토: AllViewerExceptHostHeader·CachingDisabled(기본)/CachingOptimized(assets)·
+  us-east-1 ACM·DNS 검증·A/AAAA alias — 전부 스펙 일치. validate·npm test 17/17 독립 재실행
+- merge → apply(6 add/1 change: ACM·검증 레코드·CF·Route53×2 + Lambda env)
+- E2E: https://showcase.nxtcloud.kr — health 200, 업로드 발급 URL이 커스텀 도메인,
+  갤러리 200, 로고 200 image/png(CF 경유 바이너리 무결), http→https 301
+- 검증용 업로드(3f3c3bf2) DynamoDB·S3 정리
+
+### Handoff
+- 수강생 공지 주소 = https://showcase.nxtcloud.kr (README의 "강사 공지" 자리에 쓸 값)
