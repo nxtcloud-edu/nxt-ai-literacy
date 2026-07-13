@@ -20,6 +20,7 @@ body>main,body>.site-nav{position:relative;z-index:1}
 button:active,.game-card:active,.cohort-card:active{transform:translateY(1px)}
 :root:not([data-theme="dark"]) .cohort-card,:root:not([data-theme="dark"]) .game-card{border-color:#c9cede;box-shadow:0 1px 3px rgba(28,31,46,.08),0 4px 14px rgba(28,31,46,.06)}
 :root:not([data-theme="dark"]) .cohort-card:hover,:root:not([data-theme="dark"]) .game-card:hover{border-color:var(--cyan);box-shadow:0 3px 7px rgba(28,31,46,.11),0 10px 24px rgba(28,31,46,.10)}
+:root:not([data-theme="dark"]) .category{border-color:#b7bdd1!important;color:#3f4560!important}
 :root:not([data-theme="dark"]) .filter{border-color:#c9cede!important;background:#fff!important}
 :root:not([data-theme="dark"]) .filter:hover{border-color:#7f91ad!important}
 :root:not([data-theme="dark"]) .filter[aria-pressed="true"],:root:not([data-theme="dark"]) .home-tab[aria-selected="true"],:root:not([data-theme="dark"]) .page-button[aria-current="page"]{border-color:var(--cyan)!important;background:#e4f5fb!important;color:#075f80!important;box-shadow:inset 0 -2px 0 var(--cyan)}
