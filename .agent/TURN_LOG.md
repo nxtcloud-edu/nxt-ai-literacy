@@ -1121,3 +1121,43 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 프로덕션 최종 화면 확인 후 사용자 보고
+
+---
+
+## 2026-07-13 10:21 KST — hermes (Coder) — WO-015 완료
+
+### Intent
+- portal.nxtcloud.kr의 모눈 배경과 라이트 디자인 문법을 바닐라 CSS로 이식
+
+### Files changed
+- `html-delivery/public/assets/theme.css` — 모눈·radial mask·트윙클·다크/reduced-motion·폰트·라운딩·primary
+- `html-delivery/public/{index,cohort,upload,view}.html` — 장식용 트윙클 7개 레이어
+- `.agent/*` — WO 상태와 검증 인계
+
+### Commands·verification
+- 필수 CURRENT_STATE·HANDOFF·WO·README와 4 HTML/theme.css 조회, clean `wo/015` 확인
+- 읽기 전용 portal 원본 `animated-grid-pattern.tsx`, `page.tsx` L115-149 실측
+- `git diff --check` — 두 구현 커밋 전 및 최종 origin/main 범위 통과
+- DRY_RUN `node server.js` 시작
+- index light: 40px grid, 560px/50% 30% mask, twinkle 7, 산세리프 body, mono label, radius 16px, primary rgb(15,23,42)
+- index dark: white grid rgba(.035/.06), 기존 panel palette·토글 저장 확인; 라이트/다크 시각 캡처 확인
+- cohort light/dark: 40px grid, twinkle 7, 산세리프, filter radius 10px, 양 grid 변수 확인
+- upload light/dark: panel 16px, input 10px, submit slate-900, 양 grid/panel 확인
+- view light/dark: panel 16px, twinkle 7, 양 grid/panel/font 확인
+- browser CSSOM: `prefers-reduced-motion: reduce`에서 twinkle `animation:none`
+- browser console/JS errors 0건
+- `npm test` — 16/16 통과
+- forbidden diff(server·registry·ratelimit·lambda·infra·게임 파일) 출력 없음
+- 서버 process kill 후 background process 0건
+- 구현 커밋: `65ade2b`, `41f7ca7`
+- 실제 배포, 프로덕션 접속, push — 실행 안 함
+
+### Decisions
+- 원본 40px SVG 패턴을 두 축 CSS linear-gradient로 재현하고 중앙 radial mask 레이어를 중첩
+- 7개 사각형은 서로 다른 음수 delay로 최대 opacity .08만 노출
+- 본문은 시스템 산세리프, OPEN CONTENT·코호트명·날짜 등 라벨은 mono 유지
+- primary만 slate-900으로 바꾸고 추천 하트의 pink accent는 유지
+
+### Handoff
+- WO-015 상태 `검증 대기`
+- Claude가 두 구현 커밋과 4페이지 양 테마를 재검증 후 머지·배포 판정

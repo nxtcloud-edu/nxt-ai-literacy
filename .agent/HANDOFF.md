@@ -1,22 +1,31 @@
 # Handoff
 
 ## Current handoff summary
-WO-014에서 `index.html`, `cohort.html`, `upload.html`, `view.html`의 로고 img 및 favicon 총 8개 URL에 정확히 `?v=2`를 추가했다. 손상 응답을 보유한 기존 HTTP 캐시와 다른 키를 사용하기 위한 단일 목적 변경이다.
+WO-015에서 포털의 40px AnimatedGridPattern 문법을 바닐라 CSS로 옮겼다. 전체에 은은한 모눈, 중앙 `560px` radial mask 강조, 서로 다른 delay의 파란 사각형 7개를 적용하고 reduced-motion에서 애니메이션을 끈다. 본문은 시스템 산세리프, 라벨은 모노로 유지했으며 카드 16px·컨트롤 10px 라운딩과 slate-900 프라이머리를 적용했다.
 
 ## Verification evidence
-- `/assets/nxtcloud-logo.png?v=2`: 4개 HTML에서 총 8건
-- 무버전 `nxtcloud-logo.png` img/favicon 참조: 0건
-- `git diff --check`: 통과
+- 4페이지 모두 `.grid-twinkles` 7개와 40px grid 적용
+- 라이트: blue grid 변수, body 산세리프, label 모노, card/panel 16px, input/filter 10px, primary `rgb(15,23,42)`
+- 다크: grid `rgba(255,255,255,.035/.06)`, 기존 dark panel·텍스트 대비와 토글 저장 유지
+- index 라이트/다크 시각 캡처에서 중앙 모눈·트윙클·카드·필터·네비 확인
+- cohort/upload/view 각각 라이트·다크 computed style 및 DOM 확인
+- `@media (prefers-reduced-motion: reduce)`에서 twinkle `animation:none` 브라우저 CSSOM 확인
 - `npm test`: 16/16 통과
-- HTML 외 제품 코드·자산 변경 없음
+- 브라우저 console/JS 오류 0
+- server·registry·ratelimit·lambda·infra·게임 파일 diff 없음
+- 검증 서버 종료, background process 0건
 
-## Commit
-- 현재 HEAD는 단일 목적 `fix: 로고 에셋 캐시 버스팅` 커밋
+## Commits
+- `65ade2b feat: 포털 모눈 배경 시스템 적용`
+- `41f7ca7 feat: 포털식 라이트 마감 적용`
+- 상태·저널 문서 커밋은 현재 HEAD `docs: WO-015 포털 디자인 검증 인계`
 
 ## Next recommended project actions
-1. 4개 HTML의 img·favicon 각 2개 URL만 바뀌었는지 확인
-2. 배포 후 브라우저 네트워크에서 `?v=2` 요청과 정상 PNG 렌더 확인
+1. 라이트 hero의 중앙 radial 강조와 본문 faint grid 강도를 포털 원본과 나란히 확인
+2. 트윙클이 주의를 빼앗지 않는지 실제 애니메이션·reduced-motion 환경 확인
+3. main 머지 후 4페이지 정적 자산 캐시 갱신 확인
 
 ## Collision risks
+- 참조 저장소 `/Users/glen/Desktop/work/nxt-portal`은 읽기만 했고 수정하지 않음
+- iframe 콘텐츠·서버·infra 미수정
 - 실제 배포·프로덕션 접속·push 미실행
-- 쿼리 버전 외 캐시 헤더나 파일 내용은 변경하지 않음
