@@ -1206,3 +1206,11 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-016 상태 `검증 대기`
 - Claude가 단일 커밋과 양 테마 링크 배치를 재검증 후 머지·배포 판정
+
+---
+
+## 2026-07-13 11:00 KST — claude (Planner/Verifier) — WO-016 검증·배포 완료
+
+### Commands / verification
+- diff 검토(cohort.html만, 44px 터치 타깃 포함) + 브라우저 실측(요약 아래 배치, 네비 정리)
+- merge → apply → 배포. 내재화 워처(.agent/scripts) 첫 정상 작동 확인
