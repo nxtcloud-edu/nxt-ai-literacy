@@ -1601,3 +1601,15 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 다음 작업 대기
+
+---
+
+## 2026-07-13 17:40 KST — claude (Planner) — 저장소 정리 (브랜치·워크트리)
+
+### Commands / verification
+- 전 워크트리 clean·main=origin 확인 → wo/001~023(22개, 전부 머지 확인) 삭제
+- 코더 워크트리를 hermes/idle(=main 9fd4db1)로 파킹 — 다음 WO 시 wo/NNN 분기 재개
+- 남은 브랜치: main, hermes/idle. tmux 세션·훅·게이트는 유지 (협업 체계 상시 대기)
+
+### Handoff
+- 다음 작업 시: 명령서 커밋 → wo/NNN 분기 → 착수 지시 (기존 절차 그대로)
