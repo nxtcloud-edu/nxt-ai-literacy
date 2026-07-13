@@ -11,7 +11,7 @@
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 50% 0, #22284d 0, var(--bg) 55%); color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
   main { width: min(92vw, 560px); margin: 0 auto; padding: 38px 0 72px; }
-  .back { display: inline-block; margin-bottom: 28px; color: var(--muted); text-decoration: none; }
+  .back { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 0; color: var(--muted); text-decoration: none; }
   .back:hover { color: var(--cyan); }
   .panel { padding: clamp(24px, 6vw, 42px); border: 1px solid var(--line); background: rgba(23,26,47,.96); box-shadow: 10px 10px 0 rgba(0,0,0,.28); }
   .eyebrow { margin: 0 0 10px; color: var(--cyan); font-size: 12px; letter-spacing: .12em; }
@@ -34,12 +34,13 @@
 <link rel="stylesheet" href="/assets/theme.css">
 </head>
 <body><span class="grid-twinkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-<nav class="site-nav"><a class="site-brand" href="/"><img class="brand-logo" src="/assets/nxtcloud-logo.png?v=2" alt="NXT Cloud"><span class="site-brand-label">AI CONTENT GALLERY</span></a><div class="site-tools"><a class="back" href="/">← 갤러리</a><button class="theme-toggle" type="button" data-theme-toggle>🌙 다크</button></div></nav>
+<nav class="site-nav"><a class="site-brand" href="/"><img class="brand-logo" src="/assets/nxtcloud-logo.png?v=2" alt="NXT Cloud"><span class="site-brand-label">AI CONTENT GALLERY</span></a><div class="site-tools"><button class="theme-toggle" type="button" data-theme-toggle>🌙 다크</button></div></nav>
 <main>
   <section class="panel" aria-labelledby="upload-title">
     <p class="eyebrow">PUBLISH YOUR CONTENT</p>
     <h1 id="upload-title">내 콘텐츠 업로드</h1>
     <p class="intro">수업과 이름 또는 팀을 확인하고, AI와 함께 만든 HTML 콘텐츠를 세상에 공개해 보세요.</p>
+    <a class="back" href="/">← 갤러리로 돌아가기</a>
     <form id="uploadForm">
       <label for="affiliation">소속(수업)</label>
       <select id="affiliation" name="affiliation" required disabled>

@@ -1323,3 +1323,36 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - Hermes: wo/019 (업로드 페이지 복귀 링크 위치)
+
+---
+
+## 2026-07-13 13:13 KST — hermes (Coder) — WO-019 완료
+
+### Intent
+- 업로드 페이지 갤러리 복귀 링크를 네비에서 인트로 아래·폼 앞으로 이동
+
+### Files changed
+- `html-delivery/public/upload.html` — 링크 위치·전체 문구·WO-016 동일 터치 스타일
+- `.agent/*` — WO 상태와 단일 목적 검증 인계
+
+### Commands·verification
+- 필수 CURRENT_STATE·HANDOFF·WO·README·upload/cohort 조회, clean `wo/019` 확인
+- DRY_RUN `node server.js` 시작
+- 라이트: nav `.back` 없음, `intro.nextElementSibling === back`, `back.nextElementSibling === form`, 정확한 문구·44px·8px padding 확인
+- 다크: 동일 DOM 위치, muted `rgb(174,181,204)`, theme 저장 유지
+- 다크 시각 캡처: 네비 우측 토글만, 인트로 아래·폼 전 링크 배치 확인
+- `npm test` — 20/20 통과
+- `git diff --check` — 통과
+- 다른 페이지·공통 CSS·server·infra diff 출력 없음
+- browser console/JS 오류 0건
+- 서버 process kill 후 background process 0건
+- 실제 배포, 프로덕션 접속, push — 실행 안 함
+
+### Decisions
+- 문구는 명령서대로 `← 갤러리로 돌아가기`를 정확히 사용
+- `.back` 스타일은 WO-016과 같은 inline-flex·44px·8px·muted/hover accent로 통일
+- WO 요구대로 제품 변경과 필수 저널을 단일 목적 커밋 1개로 구성
+
+### Handoff
+- WO-019 상태 `검증 대기`
+- Claude가 단일 커밋과 양 테마 배치를 재검증 후 머지·배포 판정
