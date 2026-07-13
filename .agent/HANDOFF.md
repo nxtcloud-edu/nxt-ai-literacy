@@ -1,24 +1,26 @@
 # Handoff
 
 ## Current handoff summary
-WO-020 콘텐츠 제목 필드 구현과 로컬 검증을 완료했고 `wo/020`에서 검증 대기 중이다.
-신규 업로드는 트림 1~60자 title을 요구하며, 버전 업데이트는 title을 갱신한다. 카드·코호트 카드·뷰어는 `title || name`을 표시하고 소유자 이름/팀과 코호트를 메타로 유지한다.
+WO-021 간격 시스템 및 카드·탭·네비 리듬 정비를 `wo/021`에서 구현하고 단독 검증했다.
+`theme.css`가 4px spacing scale의 SSOT이며, 공개 4페이지의 margin·padding·gap은 해당 변수로 정리했다. 색·폰트·레이아웃 구조, 서버 코드, infra는 변경하지 않았다.
 
 ## Verification evidence
-- 서버·테스트 커밋: `feat: 콘텐츠 제목 저장과 API 계약 추가`
-- UI·README 커밋: `feat: 갤러리와 뷰어에 콘텐츠 제목 표시`
-- `node --test test/validation.test.js` — 16/16
-- DRY_RUN — title 신규 업로드 201, 누락 400 `제목을 입력하세요.`, 같은 identity v2 title 갱신, `/api/games`·`/api/content` title 포함
-- 브라우저 — 신규 카드·뷰어 제목 우선, 레거시 카드·뷰어 name fallback, 소유자·코호트 메타 확인
-- `npm test` — 22/22
-- 포트 3210 서버와 임시 fixture·레지스트리·artifact 정리 완료
+- 간격/리듬 커밋: `7628282 refactor: 4px 간격 스케일과 카드 리듬 정비`
+- 교정 커밋: `2ac81df fix: 터치 타깃과 한국어 줄바꿈 교정`
+- 카드 실측: padding 24px, 라벨↓8px, 제목↓4px, 메타↓12px, 칩·좋아요 줄↓12px, 날짜/↗ `align-items:center`
+- 탭 실측: 그룹 내 gap 8px, 정렬 그룹 아래 12px; 필터 높이 46px로 최소 44px 충족
+- 네비 실측: 테마 토글과 업로드 버튼 모두 40px
+- 줄바꿈/레거시: 제목·메타·코호트명 `word-break:keep-all`; 합성 레거시 카드에서 제목과 같은 name을 메타에서 생략하고 코호트만 표시
+- DRY_RUN: 라이트/다크 × index·cohort·upload·view 확인, console/JS 오류 0건, 대표 갤러리 시각 검사에서 겹침·잘림·패딩 침범 없음
+- 공개 HTML/theme의 margin·padding·gap 직접 px 검색 0건; base 이후 변경 파일은 공개 CSS/HTML 5개뿐
+- `npm test` — 22/22, `git diff --check` — 통과
+- 포트 3210 서버 종료 및 background process 0건
 
 ## Next recommended project actions
-1. Claude가 WO-020 diff·커밋 경계·단독 테스트를 재검증
-2. DRY_RUN 또는 배포 후 신규/레거시 카드와 뷰어를 확인
-3. 검증 통과 시 main 머지·배포 후 8팀 기존 데이터 title 주입
+1. Claude가 두 커밋의 scope와 spacing token 적용을 재검증
+2. 모바일 폭에서 `중급` keep-all, 필터 터치 타깃, 카드 날짜/화살표 하단 정렬을 재확인
+3. 검증 통과 시 main 머지·배포 여부 판정
 
 ## Collision risks
 - 검증 서버 포트 3210 (3111 금지), 전 스위트는 단독 실행
-- 프로덕션 배포·8팀 title 주입은 검증자 전담
-- Coder는 push·main 머지·클라우드 접근을 수행하지 않음
+- Coder는 push·main 머지·배포·클라우드 접근을 수행하지 않음

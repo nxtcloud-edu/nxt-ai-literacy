@@ -1430,3 +1430,53 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 다음 작업 대기
+
+---
+
+## 2026-07-13 15:21 KST — hermes (Coder) — WO-021
+
+### Intent
+- 4px spacing scale을 공개 UI의 간격 SSOT로 도입하고 카드·탭·네비의 수직 리듬을 정비
+- 한국어 keep-all, 터치 타깃, 눌림 피드백, 레거시 이름 중복 제거를 별도 교정 커밋으로 분리
+
+### Files changed
+- `html-delivery/public/assets/theme.css` — spacing token, 카드/탭 리듬, 40/44px 타깃, keep-all, active/reduced-motion 규칙
+- `html-delivery/public/index.html`, `cohort.html` — 4px 변수 간격, 레거시 이름 중복 제거, 공통 메타 클래스
+- `html-delivery/public/upload.html`, `view.html` — inline margin·padding·gap을 spacing 변수로 전환
+- `.agent/work-orders/WO-021-spacing-rhythm.md`, `CURRENT_STATE.md`, `HANDOFF.md`, `TURN_LOG.md` — 검증 대기 상태와 인계 증거
+
+### Commands·verification
+- `AGENTS.md` → `.agent/CURRENT_STATE.md` → `.agent/HANDOFF.md` → work-order README·WO-021 순서로 읽고 `git status --short --branch`, `git log -1` 확인 — clean `wo/021`, base `e29dd24`
+- WO 상태를 `진행 중(Hermes)`로 전환하고 theme.css 및 index·cohort·upload·view의 inline CSS·렌더 함수를 전수 조회
+- 임시 Python CSS 스캔으로 4페이지 style 선언을 분리 확인하고 임시 스크립트는 실행 후 삭제
+- `git diff --check`, staged stat/status를 각각 단독 실행해 첫 목적 경계 확인
+- 커밋 `7628282 refactor: 4px 간격 스케일과 카드 리듬 정비`
+- 줄바꿈·40/44px 타깃·active/reduced-motion·레거시 중복 제거 후 `git diff --check`, staged stat/status 단독 확인
+- 커밋 `2ac81df fix: 터치 타깃과 한국어 줄바꿈 교정`
+- `lsof -nP -iTCP:3210 -sTCP:LISTEN` — 시작 전 listener 없음(exit 1)
+- `PORT=3210 node server.js` 시작 후 `/api/health` — `{"ok":true}`
+- 브라우저 index 라이트/다크 — spacing token 4/8/12/16/24/32px, 필터 46px, 네비 토글/업로드 각 40px, 탭 gap 8px·그룹 간 12px 확인
+- index 카드 — padding 24px, 라벨↓8px, 제목↓4px, 메타↓12px, 칩·좋아요↓12px, 날짜/↗ center 및 keep-all 확인
+- index 합성 레거시 카드 — 제목 `레거시 이름`, 메타는 이름 없이 코호트만 표시
+- cohort 다크/라이트 — 코호트명 keep-all, 필터 46px, 카드 padding 24px, 날짜/↗ center; 일반 title 카드에는 이름·코호트, 레거시 카드에는 코호트만 표시
+- upload 라이트/다크 — panel 44px, intro 16/24px, label 16/8px, back 44px, nav toggle 40px 및 폼 준비 상태 확인
+- view 다크/라이트 — 제목·메타 keep-all, header 32/24px, feedback gap/panel 24px, nav toggle 40px 확인
+- browser console/JS 오류 0건
+- 첫 post-stop 시각 캡처가 빈 화면으로 무효여서 서버를 재시작하고 대표 index 라이트 시각 검토 — 네비 높이, 탭 구분, 카드 리듬, 날짜/↗ 정렬에 겹침·잘림·패딩 침범 없음
+- 두 차례 서버를 process kill; 최종 background process 0건, 포트 3210 listener 없음(exit 1)
+- `npm test` — 22/22 통과
+- 공개 HTML·theme.css의 margin/padding/gap 직접 px 검색 — 0건
+- `git diff --name-only e29dd24..HEAD` — 공개 CSS/HTML 5개만 출력, server·infra 변경 없음
+- 최종 `git diff --check` — 통과
+- `command -v check-journal.sh` — PATH에 검증 스크립트 없음(exit 1), 따라서 실행 안 함
+- 색·폰트·레이아웃 구조 변경, push, main 머지, 배포, 클라우드 접근 — 실행 안 함
+
+### Decisions
+- 카드 footer DOM은 바꾸지 않고 `time::after`에 ↗를 배치해 날짜와 같은 flex row에 정렬
+- 레거시 판단은 실제 표시 제목 `(title || name) === name`으로 처리해 title 누락과 title=name 양쪽의 중복을 제거
+- 네비 두 컨트롤은 `height/min-height:40px`, 필터는 패딩 포함 실측 46px로 최소 44px를 충족
+- active transform은 reduced-motion media에서 `!important`로 무효화해 뒤쪽 일반 active 규칙보다 우선하도록 함
+
+### Handoff
+- WO-021 상태 `검증 대기`
+- Claude가 두 구현 커밋과 라이트/다크·모바일 폭을 독립 재검증 후 main 머지·배포 여부 판정
