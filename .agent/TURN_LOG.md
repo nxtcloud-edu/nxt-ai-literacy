@@ -1629,3 +1629,49 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 3. `tmux new-session -d -s ai-literacy-hermes -c ../nxt-ai-literacy-hermes` → `hermes` 기동
 4. 명령서 커밋 → `git -C ../nxt-ai-literacy-hermes checkout -b wo/NNN main` → 착수 지시
    (.agent/scripts/tmux-send-safe.sh · watcher.sh 사용)
+
+---
+
+## 2026-07-14 08:41 KST — hermes (Coder) — WO-024
+
+### Intent
+- WO-024 관리자 로그인(HttpOnly 쿠키 세션, HMAC)과 관리 API 4종을 구현하고 검증 대기 상태로 인계.
+
+### Files changed
+- `html-delivery/admin-auth.js` — 관리자 env 설정 확인, timing-safe id 비교, scrypt 비밀번호 검증 재사용, HMAC 세션 토큰, 수동 쿠키 파싱, HttpOnly 세션/로그아웃 쿠키, 로그인 rate limit, `requireAdmin` 구현.
+- `html-delivery/server.js` — `/api/admin/login`, `/api/admin/session`, `/api/admin/logout`, `/api/admin/reset-password`, `PATCH/DELETE /api/admin/content/:contentId`, `DELETE /api/admin/feedback` 연결; DRY_RUN 로컬 파일/피드백 삭제 페어와 감사 로그 추가.
+- `html-delivery/registry.js` — 비밀번호 재설정, 부분 갱신, 레지스트리 삭제용 로컬/DynamoDB 함수 추가.
+- `html-delivery/test/admin-auth.test.js` — 세션 서명·변조·만료·쿠키·timing-safe 비교 단위 테스트 추가.
+- `html-delivery/test/admin-api.test.js` — 503/401/429, 로그인 세션, 미인증 거부, 부분 갱신, 피드백 삭제, reset-password, 콘텐츠 삭제 회귀 테스트 추가.
+- `.agent/work-orders/WO-024-admin-auth-api.md` — 상태를 `검증 대기`로 갱신.
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — WO-024 구현·검증·게이트 차단과 검증자 대행 실측 결과 인계.
+
+### Commands / verification
+- `skill_view multi-agent-collaboration`, `skill_view multi-agent-work-journal`, `skill_view software-quality-and-debugging` — 관련 협업/품질 절차 확인.
+- `read_file AGENTS.md`, `read_file .agent/CURRENT_STATE.md`, `read_file .agent/HANDOFF.md`, `git status --short --branch` — 시작 전 규칙·상태 대조; 브랜치 `wo/024` 확인.
+- `read_file .agent/work-orders/README.md`, `read_file .agent/work-orders/WO-024-admin-auth-api.md`, `git log --oneline --decorate --max-count=5`, 파일 검색/조회 — WO-024 범위와 기존 API/registry/test 구조 확인.
+- `.agent/work-orders/WO-024-admin-auth-api.md` 상태를 `진행 중(Hermes)`로 전환.
+- `write_file html-delivery/admin-auth.js` — 인증 유틸 작성.
+- `execute_code` 편집 — `registry.js`, `server.js`에 관리 API와 저장소 확장 구현.
+- `write_file html-delivery/test/admin-auth.test.js`, `write_file html-delivery/test/admin-api.test.js` — 테스트 추가.
+- `node --test test/admin-auth.test.js` — 4/4 pass.
+- `node --test test/admin-api.test.js` — 4/4 pass.
+- `git status --short && git diff --stat` — 구현 변경 범위 확인.
+- `git add html-delivery/admin-auth.js html-delivery/test/admin-auth.test.js && git commit -m "feat: 관리자 세션 인증 유틸 추가"` — 구현 커밋 `02cacb7`.
+- `git add html-delivery/registry.js html-delivery/server.js html-delivery/test/admin-api.test.js && git commit -m "feat: 관리자 관리 API 추가"` — 구현 커밋 `585d83e`.
+- `npm test` — 31/31 pass.
+- `git diff --check` — pass.
+- DRY_RUN 5개 시나리오 Node 실측 스크립트 — 로컬 DRY_RUN 파일 정리 동작 때문에 TTY dangerous-command 게이트에서 반복 차단(`BLOCKED: User denied this command`); 채팅 승인으로는 해제되지 않음.
+- 사용자/검증자 지시: 실측 재시도 없이 검증자가 대행한 DRY_RUN 결과를 수용. 검증자 대행 실측 통과 항목: 로그인 200/세션 ok, 틀린 비밀번호 401, 미인증 관리 API 401, reset-password 후 구 비밀번호 403·새 비밀번호 v2, 콘텐츠 삭제 후 갤러리·피드백 소멸.
+- `date '+%Y-%m-%d %H:%M KST'`, `git status --short --branch && git log --oneline --max-count=5`, CURRENT_STATE/HANDOFF 조회, `tail -n 80 .agent/TURN_LOG.md` — 문서 마무리 전 상태 대조.
+- 실 AWS 호출, UI/infra 수정, 외부 라이브러리 추가, push, main 머지, 배포 — 실행 안 함.
+
+### Decisions / assumptions
+- 외부 라이브러리 없이 Node 내장 `crypto`와 수동 쿠키 파싱만 사용.
+- `Secure` 쿠키 속성은 명세대로 `S3_BUCKET` 설정 시에만 붙임.
+- 감사 로그는 `admin_action`, `contentId`, `at`만 기록하고 비밀번호·해시·salt 값은 기록하지 않음.
+- DRY_RUN 실측은 사용자 명시 지시에 따라 검증자 대행 통과 증거로 인계하며, Coder는 재시도하지 않음.
+
+### Handoff
+- WO-024 상태: `검증 대기`.
+- Claude가 구현 커밋 `02cacb7`, `585d83e`와 본 docs/journal 커밋을 독립 검증하고 main 머지 여부 판정.
