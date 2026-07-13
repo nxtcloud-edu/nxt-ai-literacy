@@ -1,6 +1,6 @@
 # Current State
 
-Updated: 2026-07-13 13:13 KST
+Updated: 2026-07-13 14:40 KST
 
 ## Active owners
 - Hermes (Coder): WO-019 업로드 갤러리 복귀 링크 위치 이동 완료 (`wo/019`)
