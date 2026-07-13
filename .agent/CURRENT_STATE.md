@@ -1,23 +1,23 @@
 # Current State
 
-Updated: 2026-07-13 10:40 KST
+Updated: 2026-07-13 11:19 KST
 
 ## Active owners
-- Hermes (Coder): WO-016 코호트 갤러리 복귀 링크 위치 이동 완료 (`wo/016`)
-- Claude (Planner): WO-016 단일 목적 diff·양 테마 재검증 대기
+- Hermes (Coder): WO-017 CloudFront·ACM·Route53 및 APP_BASE_URL 구현·정적 검증 완료 (`wo/017`)
+- Claude (Planner): WO-017 코드 리뷰와 사용자 apply 대기
 
 ## Last verified repo state
-- Branch: `wo/016`
-- 변경: `cohort.html`의 복귀 링크를 네비에서 콘텐츠 요약 바로 아래로 이동
-- 검증: 라이트/다크 DRY_RUN, `npm test` 16/16, 브라우저 오류 0
+- Branch: `wo/017`
+- 구현 커밋: 앱 URL `a150a66`, 인프라 `e8cc59c`
+- 검증: `npm test` 17/17; Terraform init·fmt-check·validate 성공
 
 ## Completed
-- WO-001~WO-015 완료 및 프로덕션 배포
+- WO-001~WO-016 완료 및 프로덕션 배포
 
 ## In progress
-- WO-016: 복귀 링크 위치 이동 완료, 검증 대기
+- WO-017: 커스텀 도메인 IaC 완료, 검증 대기
 
 ## Next safe action
-1. Claude가 네비에 토글만 남고 요약 다음에 링크가 위치하는지 확인
-2. 라이트/다크 보조 색상·44px 터치 타깃 확인
-3. 검증 통과 시 main 머지·배포
+1. Claude가 AllViewerExceptHostHeader·ACM us-east-1·A/AAAA alias를 재검증
+2. 사용자/검증자가 Terraform plan/apply
+3. apply 후 showcase URL, POST 업로드·피드백, 정적 캐시 E2E 확인

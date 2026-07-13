@@ -1214,3 +1214,43 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Commands / verification
 - diff 검토(cohort.html만, 44px 터치 타깃 포함) + 브라우저 실측(요약 아래 배치, 네비 정리)
 - merge → apply → 배포. 내재화 워처(.agent/scripts) 첫 정상 작동 확인
+
+---
+
+## 2026-07-13 11:19 KST — hermes (Coder) — WO-017 완료
+
+### Intent
+- Lambda Function URL 앞 CloudFront와 showcase.nxtcloud.kr ACM/Route53를 Terraform으로 정의
+- 발급 URL을 APP_BASE_URL 기준으로 고정
+
+### Files changed
+- `html-delivery/server.js`, `test/validation.test.js` — APP_BASE_URL 우선 계약과 회귀 테스트
+- `infra/main.tf` — ACM DNS 검증, managed policies, CloudFront, Route53 A/AAAA, Lambda env
+- `infra/versions.tf`, `outputs.tf` — us-east-1 provider alias와 service URL output
+- `.agent/*` — WO 상태와 검증 인계
+
+### Commands·verification
+- 필수 CURRENT_STATE·HANDOFF·WO·README·infra·server/test·decision 조회, clean `wo/017` 확인
+- `node --test test/validation.test.js` — 11/11 통과
+- `terraform fmt -recursive infra` — 성공
+- `terraform -chdir=infra init -backend=false` — 성공; 기존 aws v5.100.0/archive v2.8.0 재사용
+- `terraform -chdir=infra fmt -check` — 초기·최종 통과
+- `terraform -chdir=infra validate` — 초기·최종 `Success! The configuration is valid.`
+- `npm test` — 최종 17/17 통과
+- managed policy name/data source와 APP_BASE_URL 검색 확인
+- 양 cache behavior의 AllViewerExceptHostHeader 참조 2건 확인
+- `X-Forwarded-Host`·legacy forwarded_values 없음 확인
+- `git diff --check` — 통과
+- 구현 커밋: `a150a66`, `e8cc59c`
+- terraform plan/apply, aws CLI, 클라우드·프로덕션 접속, push — 실행 안 함
+
+### Decisions
+- Lambda Function URL domain은 function_url에서 https prefix·후행 slash를 제거해 custom origin으로 사용
+- 기본 behavior는 전체 메서드+CachingDisabled, `/assets/*`는 CachingOptimized
+- 양 behavior 모두 managed AllViewerExceptHostHeader를 사용해 viewer Host를 origin에 전달하지 않음
+- 인증서와 validation resource는 aliased us-east-1 provider, DNS 레코드는 기본 provider Route53 사용
+- Function URL과 공개 permission은 직접 접근 호환을 위해 유지
+
+### Handoff
+- WO-017 상태 `검증 대기`
+- Claude가 코드 리뷰 후 사용자 plan/apply 및 실제 DNS·CloudFront E2E를 수행
