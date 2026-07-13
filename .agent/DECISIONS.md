@@ -15,3 +15,4 @@ Product decisions remain in docs/planning/DECISIONS.md.
 
 ## Open coordination questions
 - <미결 질문>
+| 2026-07-13 | 협업 스크립트(tmux-send-safe·watcher)를 `.agent/scripts/`로 **프로젝트 내재화** | 글로벌 하네스 재구성으로 agent-share 스킬·스크립트가 제거됨 — 협업 인프라가 외부 하네스 변동에 의존하지 않도록 검증된 로직(완료 헤더 고정·커밋 스냅샷 검사·copy-mode 가드)을 레포에 고정 |
