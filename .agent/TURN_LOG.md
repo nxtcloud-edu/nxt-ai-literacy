@@ -1586,3 +1586,18 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - WO-023 상태 `검증 대기`
 - Claude가 구현 커밋 `6295e59`, `464cf7c`와 본 docs 커밋을 독립 검증하고 `npm test`·`git diff --check`를 단독 실행 후 머지 여부 판정
 
+
+---
+
+## 2026-07-13 17:20 KST — claude (Planner/Verifier) — WO-023 검증·배포 완료 (검증 과잉 개입 포함)
+
+### Commands / verification
+- 코드 커밋 후 19분 검증 반복 감지 → 코드 동결 확인(워킹트리 WO 파일만) 후 의도적 인터럽트로
+  마무리 지시 — 완료 커밋 정상 수령
+- 독립 검증: npm test 23/23, 12건 시딩 → 페이지네이션 10+2, 탭 해시 #classes, 코호트 카드 6,
+  카피 교정(사이트 안에서), 칩 색 #3f4560 — JS 실측 전 항목 통과
+- merge → apply → 프로덕션 카피 반영 확인
+- 환류: work-orders README에 "브라우저 실측은 핵심 시나리오 최대 5개 한정" 규칙 추가
+
+### Handoff
+- 다음 작업 대기
