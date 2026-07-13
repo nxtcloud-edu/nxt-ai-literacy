@@ -40,11 +40,29 @@ test('기업인턴십 코호트는 1팀부터 8팀만 허용한다', () => {
   assert.deepEqual(validateUploadInput({ affiliation: COHORTS[0], category: CATEGORIES[0], name: '홍길동', title: '제목', password, file: htmlFile }).errors, []);
 });
 
+test('행사별 팀 코호트는 지정된 마지막 팀까지만 허용한다', () => {
+  const password = runtimeSecret();
+  const boundaries = [
+    ['2026-고대세종-아이디어톤', 7],
+    ['2026-국민대-ai워크플로우', 5],
+    ['2026-서남-해커톤', 6],
+  ];
+
+  boundaries.forEach(([affiliation, lastTeam]) => {
+    assert.deepEqual(TEAM_COHORTS[affiliation], Array.from({ length: lastTeam }, (_, index) => `${index + 1}팀`));
+    assert.deepEqual(validateUploadInput({ affiliation, category: CATEGORIES[0], name: `${lastTeam}팀`, title: '제목', password, file: htmlFile }).errors, []);
+    assert.equal(validateUploadInput({ affiliation, category: CATEGORIES[0], name: `${lastTeam + 1}팀`, title: '제목', password, file: htmlFile }).errors[0], '팀을 선택하세요.');
+  });
+});
+
 test('코호트 API 계약은 일반 수업과 팀 수업을 함께 표현한다', () => {
   assert.deepEqual(cohortOptions(), [
     { name: '2026-고대세종-ai', teams: null },
     { name: '2026-한이음-ai-중급', teams: null },
     { name: '2026-고대세종-기업인턴십', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀'] },
+    { name: '2026-고대세종-아이디어톤', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀'] },
+    { name: '2026-국민대-ai워크플로우', teams: ['1팀', '2팀', '3팀', '4팀', '5팀'] },
+    { name: '2026-서남-해커톤', teams: ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀'] },
   ]);
 });
 

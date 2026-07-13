@@ -10,9 +10,20 @@ const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
 const PORT = Number(process.env.PORT || 3210);
 const MAX_FILE_SIZE = 1024 * 1024;
-const COHORTS = ['2026-고대세종-ai', '2026-한이음-ai-중급', '2026-고대세종-기업인턴십'];
+const teamNames = (count) => Array.from({ length: count }, (_, index) => `${index + 1}팀`);
+const COHORTS = [
+  '2026-고대세종-ai',
+  '2026-한이음-ai-중급',
+  '2026-고대세종-기업인턴십',
+  '2026-고대세종-아이디어톤',
+  '2026-국민대-ai워크플로우',
+  '2026-서남-해커톤',
+];
 const TEAM_COHORTS = {
-  '2026-고대세종-기업인턴십': ['1팀', '2팀', '3팀', '4팀', '5팀', '6팀', '7팀', '8팀'],
+  '2026-고대세종-기업인턴십': teamNames(8),
+  '2026-고대세종-아이디어톤': teamNames(7),
+  '2026-국민대-ai워크플로우': teamNames(5),
+  '2026-서남-해커톤': teamNames(6),
 };
 const CATEGORIES = ['미니게임', '웹페이지'];
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '.local-deploy');

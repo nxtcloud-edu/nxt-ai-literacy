@@ -1480,3 +1480,40 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-021 상태 `검증 대기`
 - Claude가 두 구현 커밋과 라이트/다크·모바일 폭을 독립 재검증 후 main 머지·배포 여부 판정
+
+---
+
+## 2026-07-13 15:29 KST — hermes (Coder) — WO-022
+
+### Intent
+- 과거 행사 팀 코호트 3개를 서버 SSOT에 추가하고 코호트별 마지막 허용 팀·첫 초과 팀 경계를 회귀 테스트로 고정
+- UI·registry·infra를 건드리지 않고 단일 목적 커밋으로 인계
+
+### Files changed
+- `html-delivery/server.js` — 신규 코호트 3개와 7/5/6팀 상한 추가, 기존 8팀 범위를 공통 생성 헬퍼로 유지
+- `html-delivery/test/validation.test.js` — 신규 팀 경계와 `/api/cohorts` 응답 계약 회귀 테스트
+- `.agent/work-orders/WO-022-event-cohorts.md`, `CURRENT_STATE.md`, `HANDOFF.md`, `TURN_LOG.md` — 검증 대기 상태와 인계 증거
+
+### Commands·verification
+- `AGENTS.md` → `.agent/CURRENT_STATE.md` → `.agent/HANDOFF.md` 순으로 읽고 `git status --short --branch`, `git log -1` 대조 — clean `wo/022`, base `aef6146`
+- work-order README, WO-022, 신규 디자인 SSOT `DESIGN.md`를 읽음; 이번 작업은 서버 상수 범위라 UI 변경 없음
+- `server.js`, `validation.test.js`, package test script 및 COHORTS/TEAM_COHORTS 사용 지점 조회
+- 첫 V4A 테스트 패치는 hunk 검증 오류로 파일 변경 없이 실패; 고유 블록 replace로 같은 테스트 변경을 적용
+- TDD red `node --test test/validation.test.js` — 17건 중 15 통과·2 실패(신규 TEAM_COHORTS undefined, API 계약 신규 항목 누락)
+- `teamNames(count)` 헬퍼와 신규 COHORTS/TEAM_COHORTS 상수 구현
+- focused `node --test test/validation.test.js` — 17/17 통과
+- `npm test` — 23/23 통과
+- 각 신규 코호트 마지막 팀(7/5/6팀) 검증 성공, 첫 초과 팀(8/6/7팀)은 `팀을 선택하세요.`; 기존 기업인턴십 1~8팀 회귀 유지
+- `git diff --check` 및 `git diff --cached --check` — 통과; staged stat/status에서 6개 의도 파일만 확인
+- 구현 전 diff stat/status — server.js, validation test, WO 상태만 출력
+- 최종 제품 diff 경로 — `html-delivery/server.js`, `html-delivery/test/validation.test.js`만 출력; background process 0건
+- UI, registry, infra, 클라우드·프로덕션 변경, runtime 서버, push, main 머지, 배포, 데이터 시딩 — 실행 안 함
+
+### Decisions
+- 코호트별 배열 중복을 줄이되 팀 표기는 기존 계약과 동일하게 유지하도록 `teamNames(count)`를 상수 선언부에만 사용
+- 경계 테스트는 validator의 성공/400 오류 계약과 `cohortOptions()` 응답 shape를 함께 고정
+- WO의 단일 커밋 요구에 따라 구현·테스트·필수 협업 문서를 한 목적 커밋으로 구성
+
+### Handoff
+- WO-022 상태 `검증 대기`
+- journal/status를 포함한 단일 커밋은 현재 HEAD `feat: 행사 팀 코호트 3개 추가`이며 Claude가 재검증 후 머지·배포·시딩 여부 판정

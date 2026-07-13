@@ -1,26 +1,24 @@
 # Handoff
 
 ## Current handoff summary
-WO-021 간격 시스템 및 카드·탭·네비 리듬 정비를 `wo/021`에서 구현하고 단독 검증했다.
-`theme.css`가 4px spacing scale의 SSOT이며, 공개 4페이지의 margin·padding·gap은 해당 변수로 정리했다. 색·폰트·레이아웃 구조, 서버 코드, infra는 변경하지 않았다.
+WO-022에서 과거 행사 팀 코호트 3개를 서버 SSOT에 추가하고 경계 회귀 테스트를 작성했다.
+UI는 `/api/cohorts`의 `teams`를 동적으로 사용하므로 변경하지 않았다.
 
 ## Verification evidence
-- 간격/리듬 커밋: `7628282 refactor: 4px 간격 스케일과 카드 리듬 정비`
-- 교정 커밋: `2ac81df fix: 터치 타깃과 한국어 줄바꿈 교정`
-- 카드 실측: padding 24px, 라벨↓8px, 제목↓4px, 메타↓12px, 칩·좋아요 줄↓12px, 날짜/↗ `align-items:center`
-- 탭 실측: 그룹 내 gap 8px, 정렬 그룹 아래 12px; 필터 높이 46px로 최소 44px 충족
-- 네비 실측: 테마 토글과 업로드 버튼 모두 40px
-- 줄바꿈/레거시: 제목·메타·코호트명 `word-break:keep-all`; 합성 레거시 카드에서 제목과 같은 name을 메타에서 생략하고 코호트만 표시
-- DRY_RUN: 라이트/다크 × index·cohort·upload·view 확인, console/JS 오류 0건, 대표 갤러리 시각 검사에서 겹침·잘림·패딩 침범 없음
-- 공개 HTML/theme의 margin·padding·gap 직접 px 검색 0건; base 이후 변경 파일은 공개 CSS/HTML 5개뿐
-- `npm test` — 22/22, `git diff --check` — 통과
-- 포트 3210 서버 종료 및 background process 0건
+- 추가 코호트: `2026-고대세종-아이디어톤`, `2026-국민대-ai워크플로우`, `2026-서남-해커톤`
+- 팀 범위: 아이디어톤 1~7팀, ai워크플로우 1~5팀, 서남-해커톤 1~6팀
+- 기존 `2026-고대세종-기업인턴십` 1~8팀 유지
+- 경계 테스트: 각 마지막 팀은 검증 성공, 다음 팀은 `팀을 선택하세요.`로 거부
+- `cohortOptions()`에 일반 코호트 2개와 팀 코호트 4개의 정확한 응답 shape 확인
+- `node --test test/validation.test.js` — red 15/17 후 green 17/17
+- `npm test` — 23/23
+- `git diff --check` — 통과
 
 ## Next recommended project actions
-1. Claude가 두 커밋의 scope와 spacing token 적용을 재검증
-2. 모바일 폭에서 `중급` keep-all, 필터 터치 타깃, 카드 날짜/화살표 하단 정렬을 재확인
-3. 검증 통과 시 main 머지·배포 여부 판정
+1. Claude가 코호트 문자열과 7/5/6 팀 상한을 재검증
+2. 필요 시 로컬 `/api/cohorts` 및 multipart 경계를 확인
+3. 검증 통과 시 main 머지·배포 후 시딩은 검증자 범위에서 수행
 
 ## Collision risks
-- 검증 서버 포트 3210 (3111 금지), 전 스위트는 단독 실행
-- Coder는 push·main 머지·배포·클라우드 접근을 수행하지 않음
+- Coder는 UI·registry·infra·클라우드·프로덕션을 변경하지 않음
+- Push, main 머지, 배포, 데이터 시딩은 수행하지 않음
