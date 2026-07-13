@@ -1310,3 +1310,16 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-018 상태 `검증 대기`
 - Claude가 계약/UI를 재검증 후 배포하고 1팀~8팀 콘텐츠를 시딩
+
+---
+
+## 2026-07-13 13:30 KST — claude (Planner/Verifier) — WO-018 검증·배포·8팀 시딩 완료, WO-019 착수
+
+### Commands / verification
+- npm test 20/20, DRY_RUN: cohorts 계약(teams 필드)·3팀 201·이름 400·일반 코호트 201·
+  신규 구분류 400(레거시는 저장 데이터만 매핑) — 전부 정확
+- merge → apply → 프로덕션 시딩: 기업인턴십 8팀 아이디어 노트 전부 v1 등록(공통 비번),
+  코호트 필터로 8건 확인
+
+### Handoff
+- Hermes: wo/019 (업로드 페이지 복귀 링크 위치)
