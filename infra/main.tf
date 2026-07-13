@@ -142,7 +142,7 @@ resource "aws_iam_role_policy" "s3_upload" {
       {
         Sid      = "WriteAndReadGames"
         Effect   = "Allow"
-        Action   = ["s3:PutObject", "s3:GetObject"]
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
         Resource = "${aws_s3_bucket.games.arn}/games/*"
       },
       {
@@ -168,7 +168,7 @@ resource "aws_iam_role_policy" "feedback" {
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:UpdateItem"]
+      Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:UpdateItem", "dynamodb:DeleteItem"]
       Resource = aws_dynamodb_table.feedback.arn
     }]
   })
@@ -187,11 +187,15 @@ resource "aws_lambda_function" "uploader" {
 
   environment {
     variables = {
-      S3_BUCKET      = aws_s3_bucket.games.id
-      S3_REGION      = var.region
-      BASE_URL       = "https://${aws_s3_bucket.games.id}.s3.${var.region}.amazonaws.com"
-      FEEDBACK_TABLE = aws_dynamodb_table.feedback.name
-      APP_BASE_URL   = "https://showcase.nxtcloud.kr"
+      S3_BUCKET           = aws_s3_bucket.games.id
+      S3_REGION           = var.region
+      BASE_URL            = "https://${aws_s3_bucket.games.id}.s3.${var.region}.amazonaws.com"
+      FEEDBACK_TABLE      = aws_dynamodb_table.feedback.name
+      APP_BASE_URL        = "https://showcase.nxtcloud.kr"
+      ADMIN_ID            = var.admin_id
+      ADMIN_PASSWORD_HASH = var.admin_password_hash
+      ADMIN_PASSWORD_SALT = var.admin_password_salt
+      SESSION_SECRET      = var.session_secret
     }
   }
 

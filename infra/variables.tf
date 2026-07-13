@@ -20,3 +20,28 @@ variable "bucket_name" {
     error_message = "bucket_name은 소문자·숫자·점·하이픈으로 된 3~63자여야 합니다."
   }
 }
+
+
+variable "admin_id" {
+  description = "관리자 로그인 아이디"
+  type        = string
+  sensitive   = true
+}
+
+variable "admin_password_hash" {
+  description = "관리자 비밀번호 scrypt 해시(hex)"
+  type        = string
+  sensitive   = true
+}
+
+variable "admin_password_salt" {
+  description = "관리자 비밀번호 scrypt salt(hex)"
+  type        = string
+  sensitive   = true
+}
+
+variable "session_secret" {
+  description = "관리자 세션 HMAC 서명 secret"
+  type        = string
+  sensitive   = true
+}

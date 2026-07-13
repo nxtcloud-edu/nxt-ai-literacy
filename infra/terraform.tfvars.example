@@ -2,3 +2,9 @@
 region      = "ap-northeast-2"
 profile     = "default"
 bucket_name = "nxt-ai-literacy-games"
+
+# 관리자 자격은 scripts/hash-admin-password.js 출력으로 채우세요.
+admin_id            = "admin@example"
+admin_password_hash = "replace-with-scrypt-hash-hex"
+admin_password_salt = "replace-with-scrypt-salt-hex"
+session_secret      = "replace-with-random-session-secret"
