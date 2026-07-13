@@ -46,7 +46,9 @@ function publicUrl(key) {
   // DRY_RUN에서만 개발 편의를 위해 앱과 같은 오리진의 로컬 파일을 제공한다.
   return buildPublicUrl(key, { bucket: process.env.S3_BUCKET, region: process.env.S3_REGION, baseUrl: process.env.BASE_URL });
 }
-function requestBaseUrl(req) { return `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`; }
+function requestBaseUrl(req) {
+  return process.env.APP_BASE_URL || `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`;
+}
 function viewerUrl(req, contentId) { return `${requestBaseUrl(req)}/view.html?id=${contentId}`; }
 function filterGames(games, { cohort, category } = {}) {
   return games.filter((game) => (!cohort || game.affiliation === cohort) && (!category || game.category === category));
@@ -187,4 +189,4 @@ function createApp() {
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, buildPublicUrl, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, publicUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, buildPublicUrl, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { hashPassword, mergeVersionFields, newContentId, publicContent, verifyPassword } = require('../registry');
-const { CATEGORIES, COHORTS, buildPublicUrl, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
+const { CATEGORIES, COHORTS, buildPublicUrl, createVersionKey, filterGames, isValidContentId, isValidContentKey, parseFeedbackLog, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput } = require('../server');
 
 const htmlFile = { originalname: 'content.html', size: 100 };
 function runtimeSecret() { return crypto.randomBytes(12).toString('base64url'); }
@@ -56,6 +56,18 @@ test('S3 콘텐츠 URL은 별도 HTTPS REST 오리진을 사용한다', () => {
   const key = 'games/12345678-v2.html';
   assert.equal(buildPublicUrl(key, { bucket: 'gallery', region: 'ap-northeast-2' }), 'https://gallery.s3.ap-northeast-2.amazonaws.com/games/12345678-v2.html');
   assert.equal(buildPublicUrl(key, { port: 3210 }), 'http://localhost:3210/deployed/games/12345678-v2.html');
+});
+
+test('발급 URL은 APP_BASE_URL을 요청 헤더보다 우선한다', () => {
+  const previous = process.env.APP_BASE_URL;
+  process.env.APP_BASE_URL = 'https://showcase.nxtcloud.kr';
+  try {
+    const req = { protocol: 'http', get: (name) => (name === 'host' ? 'lambda-url.example' : undefined) };
+    assert.equal(requestBaseUrl(req), 'https://showcase.nxtcloud.kr');
+  } finally {
+    if (previous === undefined) delete process.env.APP_BASE_URL;
+    else process.env.APP_BASE_URL = previous;
+  }
 });
 
 test('갤러리는 필터와 최신순 정렬을 적용한다', () => {
