@@ -3,9 +3,10 @@ const path = require('node:path');
 const express = require('express');
 const multer = require('multer');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const { PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
-const { findByIdentity, getContent: getRegisteredContent, hashPassword, incrementLike, listContents, newContentId, saveRegistryItem, updateRegistryVersion, verifyPassword } = require('./registry');
+const { DynamoDBDocumentClient, DeleteCommand, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { DeleteObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
+const { deleteRegistryItem, findByIdentity, getContent: getRegisteredContent, getRegistryItem, hashPassword, incrementLike, listContents, newContentId, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword } = require('./registry');
+const { createAdminAuth } = require('./admin-auth');
 const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
 const PORT = Number(process.env.PORT || 3210);
@@ -101,6 +102,41 @@ function validateFeedbackInput({ nickname, message }) {
   if (trimmedNickname.length > 20) errors.push('닉네임은 20자 이하로 입력하세요.');
   return { errors, nickname: trimmedNickname || '익명', message: trimmedMessage };
 }
+function validateAdminContentPatch(existing, body = {}) {
+  const allowed = ['title', 'name', 'affiliation', 'category'];
+  const unknown = Object.keys(body).filter((key) => !allowed.includes(key));
+  const errors = [];
+  if (unknown.length) errors.push('수정할 수 없는 항목이 포함되어 있습니다.');
+  const merged = {
+    title: body.title === undefined ? existing.title : body.title,
+    name: body.name === undefined ? existing.name : body.name,
+    affiliation: body.affiliation === undefined ? existing.affiliation : body.affiliation,
+    category: body.category === undefined ? existing.category : body.category,
+  };
+  const trimmed = {
+    title: typeof merged.title === 'string' ? merged.title.trim() : '',
+    name: typeof merged.name === 'string' ? merged.name.trim() : '',
+    affiliation: typeof merged.affiliation === 'string' ? merged.affiliation.trim() : '',
+    category: typeof merged.category === 'string' ? merged.category.trim() : '',
+  };
+  if (!allowed.some((key) => Object.prototype.hasOwnProperty.call(body, key))) errors.push('수정할 항목을 입력하세요.');
+  if (!COHORTS.includes(trimmed.affiliation)) errors.push('등록된 수업(코호트)을 선택하세요.');
+  if (!CATEGORIES.includes(trimmed.category)) errors.push('분류를 선택하세요.');
+  const teams = TEAM_COHORTS[trimmed.affiliation];
+  if (teams) {
+    if (!teams.includes(trimmed.name)) errors.push('팀을 선택하세요.');
+  } else if (!trimmed.name || trimmed.name.length > 40) errors.push('이름은 1~40자로 입력하세요.');
+  if (!trimmed.title || trimmed.title.length > 60) errors.push('제목을 입력하세요.');
+  const fields = {};
+  allowed.forEach((key) => { if (Object.prototype.hasOwnProperty.call(body, key)) fields[key] = trimmed[key]; });
+  return { errors, fields };
+}
+function validateNewPassword(newPassword) {
+  return typeof newPassword === 'string' && newPassword.length >= 4 && newPassword.length <= 30;
+}
+function auditAdminAction(admin_action, contentId) {
+  console.log(JSON.stringify({ admin_action, contentId, at: new Date().toISOString() }));
+}
 function parseFeedbackLog(contents, contentId) {
   return contents.split('\n').filter(Boolean).flatMap((line) => {
     try { const item = JSON.parse(line); return item.contentKey === contentId ? [item] : []; }
@@ -118,6 +154,14 @@ async function storeObject(key, buffer, metadata) {
   const client = new S3Client({ region: process.env.S3_REGION || 'ap-northeast-2' });
   await client.send(new PutObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key, Body: buffer, ContentType: 'text/html; charset=utf-8', Metadata: metadata }));
 }
+async function deleteStoredObject(key) {
+  if (!process.env.S3_BUCKET) {
+    await fs.rm(path.join(LOCAL_DEPLOY_DIR, key), { force: true });
+    return;
+  }
+  const client = new S3Client({ region: process.env.S3_REGION || 'ap-northeast-2' });
+  await client.send(new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key }));
+}
 function feedbackClient() { return DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.S3_REGION || 'ap-northeast-2' })); }
 async function saveFeedback(entry) {
   if (!process.env.FEEDBACK_TABLE) return fs.appendFile(LOCAL_FEEDBACK_LOG, `${JSON.stringify(entry)}\n`, 'utf8');
@@ -131,9 +175,43 @@ async function listFeedback(contentId) {
   const response = await feedbackClient().send(new QueryCommand({ TableName: process.env.FEEDBACK_TABLE, KeyConditionExpression: 'contentKey = :id', ExpressionAttributeValues: { ':id': contentId }, ScanIndexForward: true }));
   return response.Items || [];
 }
+async function writeLocalFeedback(entries) {
+  if (!entries.length) {
+    await fs.rm(LOCAL_FEEDBACK_LOG, { force: true });
+    return;
+  }
+  await fs.writeFile(LOCAL_FEEDBACK_LOG, `${entries.map((entry) => JSON.stringify(entry)).join('\n')}\n`, 'utf8');
+}
+async function deleteFeedbackEntry(contentId, createdAt) {
+  if (!process.env.FEEDBACK_TABLE) {
+    let entries = [];
+    try { entries = (await fs.readFile(LOCAL_FEEDBACK_LOG, 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line)); }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+    const nextEntries = entries.filter((entry) => !(entry.contentKey === contentId && entry.createdAt === createdAt));
+    if (nextEntries.length === entries.length) return false;
+    await writeLocalFeedback(nextEntries);
+    return true;
+  }
+  await feedbackClient().send(new DeleteCommand({ TableName: process.env.FEEDBACK_TABLE, Key: { contentKey: contentId, createdAt } }));
+  return true;
+}
+async function deleteFeedbackForContent(contentId) {
+  if (!process.env.FEEDBACK_TABLE) {
+    let entries = [];
+    try { entries = (await fs.readFile(LOCAL_FEEDBACK_LOG, 'utf8')).split('\n').filter(Boolean).map((line) => JSON.parse(line)); }
+    catch (error) { if (error.code === 'ENOENT') return 0; throw error; }
+    const nextEntries = entries.filter((entry) => entry.contentKey !== contentId);
+    await writeLocalFeedback(nextEntries);
+    return entries.length - nextEntries.length;
+  }
+  const items = await listFeedback(contentId);
+  await Promise.all(items.map((entry) => feedbackClient().send(new DeleteCommand({ TableName: process.env.FEEDBACK_TABLE, Key: { contentKey: contentId, createdAt: entry.createdAt } }))));
+  return items.length;
+}
 
 function createApp() {
   const app = express();
+  const adminAuth = createAdminAuth();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
   const likeByContent = createSlidingWindowLimiter({ limit: 3, windowMs: 60_000 });
   const likeByIp = createSlidingWindowLimiter({ limit: 30, windowMs: 60_000 });
@@ -141,6 +219,56 @@ function createApp() {
   app.use(express.json({ limit: '16kb' }));
   app.use(express.static(path.join(__dirname, 'public')));
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
+  app.post('/api/admin/login', adminAuth.login);
+  app.get('/api/admin/session', adminAuth.requireAdmin, (_req, res) => res.json({ ok: true }));
+  app.post('/api/admin/logout', adminAuth.requireAdmin, adminAuth.logout);
+  app.post('/api/admin/reset-password', adminAuth.requireAdmin, async (req, res, next) => {
+    if (!isValidContentId(req.body?.contentId)) return res.sendStatus(404);
+    if (!validateNewPassword(req.body?.newPassword)) return res.status(400).json({ error: '비밀번호는 4~30자로 입력하세요.' });
+    const credentials = { ...hashPassword(req.body.newPassword), updatedAt: new Date().toISOString() };
+    try {
+      const ok = await updateContentPassword(req.body.contentId, credentials);
+      if (!ok) return res.sendStatus(404);
+      auditAdminAction('reset-password', req.body.contentId);
+      return res.json({ ok: true });
+    } catch (error) { return next(error); }
+  });
+  app.patch('/api/admin/content/:contentId', adminAuth.requireAdmin, async (req, res, next) => {
+    if (!isValidContentId(req.params.contentId)) return res.sendStatus(404);
+    try {
+      const existing = await getRegistryItem(req.params.contentId);
+      if (!existing) return res.sendStatus(404);
+      const result = validateAdminContentPatch(existing, req.body || {});
+      if (result.errors.length) return res.status(400).json({ error: result.errors[0], details: result.errors });
+      const fields = { ...result.fields, updatedAt: new Date().toISOString() };
+      const ok = await updateContentFields(req.params.contentId, fields);
+      if (!ok) return res.sendStatus(404);
+      const content = await getRegisteredContent(req.params.contentId);
+      auditAdminAction('update-content', req.params.contentId);
+      return res.json({ content: { ...normalizeContent(content), contentUrl: publicUrl(content.latestKey) } });
+    } catch (error) { return next(error); }
+  });
+  app.delete('/api/admin/content/:contentId', adminAuth.requireAdmin, async (req, res, next) => {
+    if (!isValidContentId(req.params.contentId)) return res.sendStatus(404);
+    try {
+      const existing = await getRegistryItem(req.params.contentId);
+      if (!existing) return res.sendStatus(404);
+      await Promise.all(Array.from({ length: existing.latestVersion }, (_, index) => deleteStoredObject(createVersionKey(req.params.contentId, index + 1))));
+      await deleteFeedbackForContent(req.params.contentId);
+      await deleteRegistryItem(req.params.contentId);
+      auditAdminAction('delete-content', req.params.contentId);
+      return res.json({ ok: true });
+    } catch (error) { return next(error); }
+  });
+  app.delete('/api/admin/feedback', adminAuth.requireAdmin, async (req, res, next) => {
+    if (!isValidContentId(req.body?.contentId) || typeof req.body?.createdAt !== 'string') return res.sendStatus(404);
+    try {
+      const ok = await deleteFeedbackEntry(req.body.contentId, req.body.createdAt);
+      if (!ok) return res.sendStatus(404);
+      auditAdminAction('delete-feedback', req.body.contentId);
+      return res.json({ ok: true });
+    } catch (error) { return next(error); }
+  });
   app.get('/api/cohorts', (_req, res) => res.json({ cohorts: cohortOptions() }));
   app.get('/api/categories', (_req, res) => res.json({ categories: CATEGORIES }));
   app.get('/api/games', async (req, res, next) => {
@@ -225,4 +353,4 @@ function createApp() {
 }
 
 if (require.main === module) createApp().listen(PORT, () => console.log(`html-delivery 서버 실행: http://localhost:${PORT}`));
-module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildPublicUrl, cohortOptions, contentTitle, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateFeedbackInput, validateUploadInput, viewerUrl };
+module.exports = { CATEGORIES, COHORTS, CONTENT_ID_PATTERN, CONTENT_KEY_PATTERN, MAX_FILE_SIZE, TEAM_COHORTS, buildPublicUrl, cohortOptions, contentTitle, createApp, createVersionKey, filterGames, isValidContentId, isValidContentKey, normalizeCategory, parseFeedbackLog, publicUrl, requestBaseUrl, sortGames, validateAdminContentPatch, validateFeedbackInput, validateNewPassword, validateUploadInput, viewerUrl };

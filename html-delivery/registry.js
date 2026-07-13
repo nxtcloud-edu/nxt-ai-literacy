@@ -2,7 +2,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, DeleteCommand, GetCommand, PutCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
 const LOCAL_REGISTRY = path.join(__dirname, '.local-registry.json');
 const TABLE_NAME = process.env.FEEDBACK_TABLE;
@@ -87,6 +87,10 @@ function mergeVersionFields(item, { title, latestVersion, latestKey, updatedAt }
   return { ...item, title, latestVersion, latestKey, updatedAt };
 }
 
+function mergeAdminContentFields(item, fields) {
+  return { ...item, ...fields, updatedAt: fields.updatedAt || item.updatedAt };
+}
+
 async function updateRegistryVersion(contentId, fields) {
   if (!TABLE_NAME) {
     const registry = await readLocalRegistry();
@@ -108,6 +112,83 @@ async function updateRegistryVersion(contentId, fields) {
     ConditionExpression: 'attribute_exists(contentKey)',
   }));
   return true;
+}
+
+async function updateContentPassword(contentId, credentials) {
+  if (!TABLE_NAME) {
+    const registry = await readLocalRegistry();
+    if (!registry[contentId]) return false;
+    registry[contentId] = { ...registry[contentId], ...credentials, updatedAt: credentials.updatedAt };
+    await writeLocalRegistry(registry);
+    return true;
+  }
+  try {
+    await documentClient().send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
+      UpdateExpression: 'SET passwordHash = :passwordHash, salt = :salt, updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':passwordHash': credentials.passwordHash,
+        ':salt': credentials.salt,
+        ':updatedAt': credentials.updatedAt,
+      },
+      ConditionExpression: 'attribute_exists(contentKey)',
+    }));
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') return false;
+    throw error;
+  }
+}
+
+async function updateContentFields(contentId, fields) {
+  if (!TABLE_NAME) {
+    const registry = await readLocalRegistry();
+    if (!registry[contentId]) return false;
+    registry[contentId] = mergeAdminContentFields(registry[contentId], fields);
+    await writeLocalRegistry(registry);
+    return true;
+  }
+  const assignments = [];
+  const values = {};
+  Object.entries(fields).forEach(([key, value]) => {
+    assignments.push(`${key} = :${key}`);
+    values[`:${key}`] = value;
+  });
+  try {
+    await documentClient().send(new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
+      UpdateExpression: `SET ${assignments.join(', ')}`,
+      ExpressionAttributeValues: values,
+      ConditionExpression: 'attribute_exists(contentKey)',
+    }));
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') return false;
+    throw error;
+  }
+}
+
+async function deleteRegistryItem(contentId) {
+  if (!TABLE_NAME) {
+    const registry = await readLocalRegistry();
+    if (!registry[contentId]) return false;
+    delete registry[contentId];
+    await writeLocalRegistry(registry);
+    return true;
+  }
+  try {
+    await documentClient().send(new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { contentKey: `content#${contentId}`, createdAt: 'meta' },
+      ConditionExpression: 'attribute_exists(contentKey)',
+    }));
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') return false;
+    throw error;
+  }
 }
 
 async function incrementLike(contentId) {
@@ -135,4 +216,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { LOCAL_REGISTRY, findByIdentity, getContent, getRegistryItem, hashPassword, incrementLike, listContents, mergeVersionFields, newContentId, publicContent, saveRegistryItem, updateRegistryVersion, verifyPassword };
+module.exports = { LOCAL_REGISTRY, deleteRegistryItem, findByIdentity, getContent, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
