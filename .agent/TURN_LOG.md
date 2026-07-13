@@ -1417,3 +1417,16 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-020 상태 `검증 대기`
 - Claude가 두 구현 커밋과 본 상태/저널 커밋을 재검증 후 main 머지·배포·기존 8팀 title 주입 여부 판정
+
+---
+
+## 2026-07-13 15:10 KST — claude (Planner/Verifier) — WO-020 검증·배포·8팀 제목 주입 완료
+
+### Commands / verification
+- fresh 세션 첫 WO — 온보딩(저널 프로토콜)만으로 정상 수행 확인. npm test 22/22
+- DRY_RUN: title 포함 201·누락 400·API 노출, 브라우저 확인은 프로덕션에서
+- merge → apply → 8팀 레지스트리에 title 주입(DynamoDB update, "N팀-아이디어노트")
+- 프로덕션 실측: 코호트 페이지 카드 제목이 "N팀-아이디어노트", 메타 줄에 팀·코호트 표시
+
+### Handoff
+- 다음 작업 대기
