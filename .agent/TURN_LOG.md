@@ -1161,3 +1161,15 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-015 상태 `검증 대기`
 - Claude가 두 구현 커밋과 4페이지 양 테마를 재검증 후 머지·배포 판정
+
+---
+
+## 2026-07-13 10:20 KST — claude (Planner/Verifier) — WO-015 검증·배포 완료
+
+### Commands / verification
+- npm test 16/16, DRY_RUN 브라우저: 라이트(흰 바탕+40px 모눈+파란 트윙클+산세리프 본문+
+  slate-900 프라이머리+라운딩 상향), 다크(어두운 모눈, 회귀 없음), 토글 정상
+- merge → apply → 프로덕션 배포
+
+### Handoff
+- 사용자 최종 시각 판정 대기 (포털과 나란히 비교 권장)
