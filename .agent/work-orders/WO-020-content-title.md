@@ -1,5 +1,5 @@
 # WO-020: 콘텐츠 제목(title) 필드 도입
-상태: 검증 대기
+상태: 완료 (2026-07-13, 검증자 Claude — 제목 필수·표시·fallback 실측 통과, main 머지)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/020` 브랜치
 
