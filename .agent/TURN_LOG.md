@@ -1843,3 +1843,10 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - Files/commands: git merge --ff-only wo/026 (main=86eb472). terraform plan(0/1/0 — Lambda source_code_hash만) → apply(1 changed). 프로덕션 실측: index·cohort·upload·view 4개 푸터·관리자 링크 OK, admin.html 200·푸터 없음.
 - Decisions: 사용자 승인 후 배포. plan-out→apply로 동일성 보장.
 - Handoff: WO-026 완료·개통. 잔여 권고: 관리자 비번 회전(사용자 결정 대기).
+
+## 2026-07-14 — Claude (Planner) — WO-027 발행
+- Intent: 사용자 요청 "관리자 페이지에서 관리자의 비밀번호를 수정하는 기능". env 자격은 런타임 불변 → DynamoDB 오버라이드(contentKey='admin#credential') 도입, 로그인 시 오버라이드 우선·env 폴백.
+- Files changed: .agent/work-orders/WO-027-admin-change-password.md(신규), CURRENT_STATE.md, HANDOFF.md, TURN_LOG.md. 코드 변경 없음(발행만).
+- Decisions: 같은 FEEDBACK_TABLE·기존 IAM 재사용 → 인프라/IAM/env 변경 0(배포는 Lambda 코드 해시만). env=복구용(break-glass). 아이디 변경 없음(비번만). 로컬 DRY_RUN은 전용 파일(레지스트리 오염 방지).
+- Commands/verification: admin-auth.js·registry.js·server.js·infra/main.tf 구조 조사(DDB 키 contentKey/createdAt, listRegistryItems 로컬 Object.values 유출 위험 확인).
+- Handoff: Hermes가 wo/027 착수. 검증 통과 시 Claude가 main 머지 + Lambda 재배포.
