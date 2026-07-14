@@ -11,4 +11,4 @@ function renderFilters(categories){filters.replaceChildren();['전체',...catego
 function renderError(){gallery.innerHTML='<div class="state error">콘텐츠를 불러오지 못했어요.</div>';summary.textContent=''}
 async function init(){try{const responses=await Promise.all([fetch('/api/cohorts'),fetch('/api/categories')]);if(responses.some(response=>!response.ok))throw new Error();const [cohortData,categoryData]=await Promise.all(responses.map(response=>response.json()));renderFilters(categoryData.categories);if(!cohortData.cohorts.some(item=>item.name===cohort)){renderGames([]);summary.textContent='등록된 수업을 찾을 수 없습니다.';return}await loadGames()}catch{renderError()}}
 init();
-</script></body></html>
+</script><footer class="site-footer"><span>© NXT Cloud · AI 리터러시 콘텐츠 갤러리</span><a class="admin-link" href="/admin.html">관리자</a></footer></body></html>
