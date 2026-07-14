@@ -8,11 +8,13 @@ const { verifyPassword } = require('../registry');
 
 function runtimeSecret() { return crypto.randomBytes(8).toString('base64url'); }
 
-test('관리자 HTML은 noindex이며 갤러리에서 링크를 노출하지 않는다', async () => {
+test('관리자 HTML은 noindex이고 공개 페이지 푸터에서만 관리자 링크를 노출한다', async () => {
   const admin = await readFile(path.join(__dirname, '../public/admin.html'), 'utf8');
-  const index = await readFile(path.join(__dirname, '../public/index.html'), 'utf8');
+  const publicPages = await Promise.all(['index.html', 'cohort.html', 'upload.html', 'view.html'].map((file) => readFile(path.join(__dirname, '../public', file), 'utf8')));
+  const footer = '<footer class="site-footer"><span>© NXT Cloud · AI 리터러시 콘텐츠 갤러리</span><a class="admin-link" href="/admin.html">관리자</a></footer>';
   assert.match(admin, /<meta name="robots" content="noindex,nofollow">/);
-  assert.equal(index.includes('admin.html'), false);
+  assert.equal(admin.includes('site-footer'), false);
+  publicPages.forEach((html) => assert.equal(html.includes(footer), true));
 });
 
 test('관리자 HTML 스크립트는 렌더링에 innerHTML을 쓰지 않고 수정 저장은 submit 버튼이다', async () => {
