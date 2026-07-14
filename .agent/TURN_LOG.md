@@ -1675,3 +1675,59 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-024 상태: `검증 대기`.
 - Claude가 구현 커밋 `02cacb7`, `585d83e`와 본 docs/journal 커밋을 독립 검증하고 main 머지 여부 판정.
+
+---
+
+## 2026-07-14 09:03 KST — hermes (Coder) — WO-025
+
+### Intent
+- WO-025 관리자 UI + infra 배선 구현, 검증자 대행 실측 반려 1건 수정, 검증 대기 인계.
+
+### Files changed
+- `infra/variables.tf` — sensitive 관리자 변수 4개 추가.
+- `infra/main.tf` — Lambda env에 관리자 변수 4개 주입, IAM에 `s3:DeleteObject`와 `dynamodb:DeleteItem`만 추가.
+- `infra/terraform.tfvars.example` — 관리자 변수 더미 자리 표시 추가.
+- `html-delivery/public/admin.html` — noindex 관리자 페이지, 로그인/세션 확인/로그아웃, 콘텐츠 테이블, 코호트 필터, 텍스트 검색, 인라인 수정, 비밀번호 재설정, 콘텐츠 삭제, 피드백 펼침/삭제 구현. 모든 동적 렌더링은 `textContent` 사용.
+- `html-delivery/scripts/hash-admin-password.js` — stdin/TTY 비밀번호를 scrypt hash·salt로 변환하고 session secret 출력. 평문 저장 없음.
+- `html-delivery/test/admin-ui.test.js` — noindex/갤러리 링크 미노출, innerHTML 미사용, 수정 저장 submit 버튼, 해시 스크립트 회귀 테스트.
+- `.agent/work-orders/WO-025-admin-ui-infra.md` — 상태를 `검증 대기`로 갱신.
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — WO-025 구현·검증·게이트 차단·검증자 대행 실측 및 수정 결과 인계.
+
+### Commands / verification
+- `read_file AGENTS.md`, `read_file .agent/CURRENT_STATE.md`, `read_file .agent/HANDOFF.md`, `git status --short --branch` — 시작 전 규칙·상태 대조; 브랜치 `wo/025` 확인.
+- `read_file .agent/work-orders/README.md`, `read_file .agent/work-orders/WO-025-admin-ui-infra.md`, `git log --oneline --decorate --max-count=8`, 파일 검색/조회 — WO-025 범위와 기존 infra/UI 구조 확인.
+- `.agent/work-orders/WO-025-admin-ui-infra.md` 상태를 `진행 중(Hermes)`로 전환.
+- `execute_code` 편집 — infra 변수/env/IAM/tfvars.example 구현.
+- `terraform fmt -check` — pass.
+- `terraform validate` — 실패: provider plugin cache 부재(`archive 2.8.0`, `aws 5.100.0`).
+- `terraform init -backend=false` — provider 설치, backend 미사용 init 성공.
+- `terraform validate` — Success, configuration valid.
+- `git diff`/`git status` — infra 변경 범위 및 IAM 추가 액션 확인.
+- `git add infra/main.tf infra/variables.tf infra/terraform.tfvars.example && git commit -m "feat: 관리자 인프라 변수와 권한 배선"` — 구현 커밋 `a361f3b`.
+- `write_file html-delivery/public/admin.html`, `write_file html-delivery/scripts/hash-admin-password.js`, `write_file html-delivery/test/admin-ui.test.js` — 관리자 UI/스크립트/테스트 작성.
+- `chmod +x html-delivery/scripts/hash-admin-password.js && node --test test/admin-ui.test.js` — 경로 오입력으로 실패(`No such file or directory`).
+- `chmod +x scripts/hash-admin-password.js && node --test test/admin-ui.test.js` — 3/3 pass.
+- `npm test` — 34/34 pass.
+- `git diff --check` — pass.
+- `git diff ... grep` — IAM 추가 액션이 `s3:DeleteObject`, `dynamodb:DeleteItem`뿐임을 확인.
+- `git add html-delivery/public/admin.html html-delivery/scripts/hash-admin-password.js html-delivery/test/admin-ui.test.js && git commit -m "feat: 관리자 페이지와 해시 스크립트 추가"` — 구현 커밋 `5613e71`.
+- DRY_RUN 실측용 서버 기동 1회 시도 — env export 명령 문제로 백그라운드 출력 없이 중단, `process kill`로 종료.
+- DRY_RUN 5개 시나리오 Node 실측 스크립트 1회 시도 — TTY dangerous-command 게이트에서 차단(`BLOCKED: User denied this command`); 사용자 지시대로 재시도하지 않고 검증자 대행 요청.
+- 검증자 대행 실측 — 통과 4개: 로그인→테이블 로드(2건), 검색 필터, 삭제 confirm→목록 소멸, 로그아웃→로그인 화면 복귀. 반려 1개: 수정 저장 클릭 무동작(fetch 미발생, 콘솔 에러 없음), 원인 `button()` helper의 `type='button'` 고정. infra 검증(variables·IAM 2개 액션 한정) 통과.
+- `read_file html-delivery/public/admin.html`, `date '+%Y-%m-%d %H:%M KST'`, `git status --short --branch && git log --oneline --max-count=5` — 수정 전 상태 대조.
+- `patch html-delivery/public/admin.html` — `button(label,className,type='button')`로 확장하고 `수정 저장`만 `type='submit'` 적용.
+- `patch html-delivery/test/admin-ui.test.js` — 수정 저장 submit 버튼 회귀 단언 추가.
+- `node --test test/admin-ui.test.js` — 3/3 pass.
+- `git diff --check` — pass.
+- `git add html-delivery/public/admin.html html-delivery/test/admin-ui.test.js && git commit -m "fix: 관리자 수정 저장 버튼 submit 처리"` — 수정 커밋 `d309ff8`.
+- `npm test` — 34/34 pass.
+- 실측 재시도, 실 AWS 호출, terraform plan/apply, aws CLI, push, main 머지, 배포 — 실행 안 함.
+
+### Decisions / assumptions
+- WO-025 실측 재시도 금지 지시에 따라 수정 후 브라우저/DRY_RUN 실측은 수행하지 않고 검증자 재검증으로 인계.
+- 저장 버튼 외 행 액션 버튼은 기존처럼 `type='button'` 유지해 의도치 않은 form submit을 방지.
+- 관리자 페이지는 직접 URL `/admin.html`로만 접근하며 갤러리 링크는 추가하지 않음.
+
+### Handoff
+- WO-025 상태: `검증 대기`.
+- Claude가 수정 커밋 `d309ff8` 포함 구현 커밋 3개와 본 docs/journal 커밋을 독립 검증하고 main 머지 여부 판정.
