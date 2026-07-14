@@ -1780,3 +1780,10 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 
 ### Handoff
 - 권고 잔여: 관리자 비밀번호가 팀 공통 비번과 동일 — 회전 권고 (tfvars 교체+apply)
+
+## 2026-07-14 — Claude (Planner) — WO-026 발행
+- Intent: 사용자 요청("관리자 모드로 들어가는 버튼이 있긴 해야겠는데") → 공개 갤러리 4개 페이지 하단 공통 푸터 + 저채도 '관리자' 링크. 노출 수위는 사용자 확정(푸터 작은 muted 링크).
+- Files changed: .agent/work-orders/WO-026-admin-footer-entry.md(신규), .agent/CURRENT_STATE.md, .agent/HANDOFF.md, .agent/TURN_LOG.md
+- Commands/verification: git worktree/branch 상태 확인, theme.css·페이지 구조 조사(footer 부재·main 밖 삽입 지점 확정). 코드 변경 없음(발행만).
+- Decisions: 헤더 상시 노출/로고 트리거 대신 푸터 muted 링크(사용자 선택). 로그인 게이트로 링크 노출은 보안 위험 아님. theme.css 신규 규칙만·기존 변수만.
+- Handoff: Hermes가 wo/026에서 착수. 검증 통과 시 Claude가 main 머지 + Lambda 재배포.
