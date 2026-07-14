@@ -1,23 +1,27 @@
 # Current State
 
-Updated: 2026-07-14 KST
+Updated: 2026-07-14 11:29 KST
 
 ## Active owners
-- Hermes (Coder): WO-027 관리자 로그인 비번 변경 — 착수 대기 (`wo/027`)
-- Claude (Planner/Verifier): WO-027 발행·검증 대기, main 소유
+- Hermes (Coder): WO-027 관리자 로그인 비번 변경 — 구현·로컬 검증 완료, `wo/027`에서 검증 대기
+- Claude (Planner/Verifier): WO-027 독립 재검증·main 머지·배포 판단 대기, main 소유
 
 ## Last verified repo state
-- Branch: `main` HEAD=`1a43cb2 docs: WO-026 완료 처리`
-- Hermes 워크트리: `wo/027`(main 기준 신규 브랜치)
-- WO-026 병합·apply·프로덕션 실측 완료(공개 4개 페이지 푸터 + 관리자 링크 개통)
+- Branch: `wo/027`
+- Base: `1bcec26 docs: WO-027 관리자 비밀번호 변경 발행`
+- Implementation commits: `6ec4835 feat: 관리자 비밀번호 오버라이드 저장과 검증 추가`, `ed6dae6 feat: 관리자 비밀번호 변경 패널 추가`
+- Journal/status docs commit: current HEAD `docs: WO-027 검증 대기 기록`
+- Working tree: docs/journal commit 후 clean
+- Tests last run: `npm test` in `html-delivery` → 38/38 pass
+- DRY_RUN script probe: local Express app with generated runtime credentials and `FEEDBACK_TABLE` unset → 5 scoped scenarios pass; no tracked local runtime files remain; Hermes background process list empty
 
 ## Completed
-- WO-001~WO-025 완료 및 프로덕션 배포
-- WO-026: 공개 4개 페이지 공통 푸터 + 저채도 '관리자' 링크 — main 머지 + apply + 프로덕션 실측 완료
+- WO-001~WO-026 완료 및 프로덕션 배포
+- WO-027 implementation: admin password override stored outside local registry, override-first login, change-password API, admin page password-change panel, tests extended.
 
 ## In progress
-- WO-027: 관리자 페이지에서 관리자 로그인 비밀번호 변경(DDB 오버라이드 우선·env 폴백, 인프라 변경 없음) — 발행됨, Coder 착수 대기
+- WO-027: 검증자 재검증 대기
 
 ## Next safe action
-1. Hermes: `wo/027`에서 registry 오버라이드 저장/조회 + login 오버라이드 우선 + change-password API + admin.html 패널 → DRY_RUN 실측 → 커밋 분리
-2. Claude: 재검증 통과 시 main 머지 + Lambda 재배포(코드 해시만, 인프라/IAM/env 변경 없음)
+1. Claude: `wo/027` tip에서 diff, `npm test`, scoped DRY_RUN/API+UI checks 재검증
+2. 통과 시 Claude만 main 머지 + Lambda 재배포 수행(인프라/IAM/env 변경 없음)

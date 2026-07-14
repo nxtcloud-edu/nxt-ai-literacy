@@ -1850,3 +1850,50 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 - Decisions: 같은 FEEDBACK_TABLE·기존 IAM 재사용 → 인프라/IAM/env 변경 0(배포는 Lambda 코드 해시만). env=복구용(break-glass). 아이디 변경 없음(비번만). 로컬 DRY_RUN은 전용 파일(레지스트리 오염 방지).
 - Commands/verification: admin-auth.js·registry.js·server.js·infra/main.tf 구조 조사(DDB 키 contentKey/createdAt, listRegistryItems 로컬 Object.values 유출 위험 확인).
 - Handoff: Hermes가 wo/027 착수. 검증 통과 시 Claude가 main 머지 + Lambda 재배포.
+
+---
+
+## 2026-07-14 11:29 KST — hermes (Coder) — WO-027
+
+### Intent
+- 관리자 로그인 비밀번호를 로그인 후 admin.html에서 변경하고, DynamoDB/DRY_RUN override를 env보다 우선하도록 구현·검증 후 인계.
+
+### Files changed
+- `.gitignore` — `html-delivery/.local-admin-credential.json` ignore 추가.
+- `html-delivery/registry.js` — `LOCAL_ADMIN_CREDENTIAL`, `ADMIN_CREDENTIAL_KEY`, `getAdminCredential`, `saveAdminCredential` 추가. DRY_RUN은 전용 파일에 0o600 저장, 로컬 registry 미사용.
+- `html-delivery/admin-auth.js` — `createAdminAuth(deps)`, `resolveActiveCredential`, async `login`, `changePassword`, 새 비밀번호 검증 추가. 세션 검증은 기존처럼 env `SESSION_SECRET` 동기 검증 유지.
+- `html-delivery/server.js` — registry 함수·hashPassword·audit 주입, `POST /api/admin/change-password` 라우트 추가.
+- `html-delivery/public/admin.html` — 로그인 후 보이는 `관리자 비밀번호 변경` 패널 추가(현재/새/확인 password inputs, submit 버튼, textContent status).
+- `html-delivery/test/admin-auth.test.js` — override 우선/env 폴백 로그인, change-password 검증·저장·재로그인 단언 추가.
+- `html-delivery/test/admin-api.test.js` — change-password API, 전용 로컬 파일 0o600, 로컬 registry 미오염, audit secret 미유출 단언 추가.
+- `html-delivery/test/admin-ui.test.js` — admin.html 비밀번호 변경 패널·submit/API 경로 단언 추가.
+- `.agent/work-orders/WO-027-admin-change-password.md` — 상태를 `검증 대기`로 갱신.
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — WO-027 구현·검증 결과 인계.
+
+### Commands / verification
+- `skill_view multi-agent-work-journal`, `skill_view software-quality-and-debugging`, `skill_view github-workflows` — 관련 협업·검증·git 절차 로드.
+- `read_file .agent/CURRENT_STATE.md`, `read_file .agent/HANDOFF.md`, `read_file .agent/work-orders/README.md`, `read_file .agent/work-orders/WO-027-admin-change-password.md`, `git status --short --branch && git rev-parse --short HEAD` — 시작 전 상태/WO/브랜치 대조; `wo/027`, HEAD `1bcec26`.
+- `read_file html-delivery/registry.js`, `read_file html-delivery/admin-auth.js`, `read_file html-delivery/server.js`, `read_file html-delivery/test/admin-auth.test.js`, `read_file html-delivery/public/admin.html`, `read_file .gitignore`, `search_files html-delivery/test '*.test.js'` — 기존 구조·테스트 확인.
+- `write_file html-delivery/admin-auth.js` — deps 주입, override-first credential resolution, async login, changePassword 구현.
+- `execute_code`/`patch` — registry override 함수와 gitignore 추가, server.js 주입·라우트 추가, admin-auth/admin-api/admin-ui 테스트 확장, admin.html 패널 추가.
+- `node --test test/admin-auth.test.js test/admin-api.test.js test/admin-ui.test.js` — 15/15 pass.
+- `git add .gitignore html-delivery/registry.js html-delivery/admin-auth.js html-delivery/server.js html-delivery/test/admin-api.test.js html-delivery/test/admin-auth.test.js && git diff --cached --stat && git diff --cached --check && git commit -m "feat: 관리자 비밀번호 오버라이드 저장과 검증 추가"` — commit `6ec4835`.
+- `git add html-delivery/public/admin.html html-delivery/test/admin-ui.test.js && git diff --cached --stat && git diff --cached --check && git commit -m "feat: 관리자 비밀번호 변경 패널 추가"` — commit `ed6dae6`.
+- `npm test` — 38/38 pass.
+- `write_file /tmp/wo027-dryrun.js`, `node /tmp/wo027-dryrun.js` — generated runtime credentials only, `FEEDBACK_TABLE` unset; env login 200, change 200, new login 200, old login 401, wrong current 401, invalid new 400, credential mode 600, local registry absent, galleryCount 0, audit action `change-password`.
+- `rm -f /tmp/wo027-dryrun.js && test ! -e .local-admin-credential.json && test ! -e .local-registry.json && git status --short --branch` — blocked by dangerous-command gate because of `rm`; not retried or worked around.
+- `process list` — empty.
+- `git status --short --branch && git log --oneline --decorate -5` — clean `wo/027`, HEAD `ed6dae6` before docs update.
+- `search_files html-delivery '.local-*'` — no local runtime files found.
+- `git diff --name-only 1bcec26..HEAD && git diff --stat 1bcec26..HEAD` — changed files limited to `.gitignore`, registry/auth/server/admin.html/tests; no infra/IAM/env files.
+- 실 AWS 호출, terraform plan/apply, aws CLI, push, main 머지, 배포 — 실행 안 함.
+
+### Decisions / assumptions
+- `createAdminAuth` now requires deps and `server.js` provides registry functions/hash/audit; tests inject fakes.
+- `requireAdmin` remains synchronous and validates only env `SESSION_SECRET`, so password override changes do not invalidate existing admin sessions.
+- DRY_RUN credential override intentionally uses a dedicated `.local-admin-credential.json`; it is not written into `.local-registry.json`, preventing gallery/list scan leakage.
+- The temp DRY_RUN script was left at `/tmp/wo027-dryrun.js` because deletion was blocked by the dangerous-command gate; it contains no hardcoded secret material.
+
+### Handoff
+- WO-027 상태: `검증 대기`.
+- Claude가 `6ec4835`, `ed6dae6` 및 본 docs/journal 커밋을 독립 재검증하고, 통과 시 main 머지·Lambda 재배포를 수행한다.
