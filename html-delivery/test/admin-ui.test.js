@@ -22,6 +22,12 @@ test('관리자 HTML 스크립트는 렌더링에 innerHTML을 쓰지 않고 수
   assert.equal(admin.includes('innerHTML'), false);
   assert.match(admin, /textContent/);
   assert.match(admin, /button\('수정 저장','primary','submit'\)/);
+  assert.match(admin, /id="passwordChangeForm"/);
+  assert.match(admin, /id="currentAdminPassword"[^>]*type="password"/);
+  assert.match(admin, /id="newAdminPassword"[^>]*type="password"[^>]*minlength="8"[^>]*maxlength="72"/);
+  assert.match(admin, /id="confirmAdminPassword"[^>]*type="password"[^>]*minlength="8"[^>]*maxlength="72"/);
+  assert.match(admin, /비밀번호 변경<\/button>/);
+  assert.match(admin, /\/api\/admin\/change-password/);
 });
 
 test('관리자 표와 편집 패널은 일반 창 폭에서 줄바꿈과 오버플로를 제어한다', async () => {
