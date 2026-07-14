@@ -1731,3 +1731,37 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-025 상태: `검증 대기`.
 - Claude가 수정 커밋 `d309ff8` 포함 구현 커밋 3개와 본 docs/journal 커밋을 독립 검증하고 main 머지 여부 판정.
+
+---
+
+## 2026-07-14 09:06 KST — hermes (Coder) — WO-025 재작업
+
+### Intent
+- 사용자 스크린샷 리포트로 확장된 WO-025 반려 범위(수정 저장 + 레이아웃 4건)를 같은 재작업에 반영하고 검증 대기 인계.
+
+### Files changed
+- `html-delivery/public/admin.html` — 표 헤더 nowrap, 셀 keep-all, 동작 셀/버튼 nowrap과 열 폭 확보, table 940px min-width 제거, 편집 grid auto-fit 180px, `수정 저장` 버튼 우측 정렬 일반 폭 처리.
+- `html-delivery/test/admin-ui.test.js` — 관리자 표/편집 패널 레이아웃 회귀 단언 추가.
+- `.agent/CURRENT_STATE.md`, `.agent/HANDOFF.md`, `.agent/TURN_LOG.md` — 확장 반려 범위와 재작업 검증 결과 인계.
+- `.agent/work-orders/WO-025-admin-ui-infra.md` — 상태 `검증 대기` 유지.
+
+### Commands / verification
+- `git status --short --branch && git log --oneline --max-count=6` — `wo/025` clean, 이전 docs 커밋 `a8bb9ec` 기준 확인.
+- `read_file html-delivery/public/admin.html`, `date '+%Y-%m-%d %H:%M KST'` — 반려 지점과 현재 시각 확인.
+- `execute_code` 편집 — admin.html 레이아웃 CSS/동작 셀 class 수정.
+- `patch html-delivery/test/admin-ui.test.js` — th/td nowrap/keep-all, 동작 셀 nowrap, table min-width 제거, edit-grid auto-fit, 저장 버튼 폭/정렬 회귀 단언 추가.
+- `node --test test/admin-ui.test.js` — 4/4 pass.
+- `git diff --check` — pass.
+- `git add html-delivery/public/admin.html html-delivery/test/admin-ui.test.js && git commit -m "fix: 관리자 표와 편집 패널 레이아웃 개선"` — 수정 커밋 `86316ad`.
+- `npm test` — 35/35 pass.
+- DRY_RUN/브라우저 실측 재시도 — 사용자 지시에 따라 실행 안 함, 검증자 재검증 대기.
+- 실 AWS 호출, terraform plan/apply, aws CLI, push, main 머지, 배포 — 실행 안 함.
+
+### Decisions / assumptions
+- 편집·피드백 패널은 테이블 하단 행 구조를 유지했다. table min-width 제거와 edit-grid auto-fit으로 table-wrap 가로 스크롤에 갇히는 문제를 먼저 해결할 수 있다고 판단해 패널을 테이블 밖으로 이동하지 않았다.
+- DESIGN.md 스케일을 유지하기 위해 신규 간격은 기존 `--sp-*`만 사용했고, 신규 px는 WO가 지정한 `minmax(180px,1fr)` 및 동작 열 최소 폭 보정에 한정했다.
+- 레이아웃 수정분 실측은 사용자 지시대로 Coder가 재시도하지 않고 검증자에게 인계한다.
+
+### Handoff
+- WO-025 상태: `검증 대기`.
+- Claude가 `86316ad` 포함 수정 저장 동작과 레이아웃 4건을 재검증하고 main 머지 여부 판정.
