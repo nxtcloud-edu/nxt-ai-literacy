@@ -1765,3 +1765,18 @@ Append-only log of meaningful agent turns. Keep entries concise and factual.
 ### Handoff
 - WO-025 상태: `검증 대기`.
 - Claude가 `86316ad` 포함 수정 저장 동작과 레이아웃 4건을 재검증하고 main 머지 여부 판정.
+
+---
+
+## 2026-07-14 09:30 KST — claude (Planner/Verifier) — WO-024·025 배포 완료 (관리자 모드 개통)
+
+### Commands / verification
+- WO-025 반려 2회: ① 수정 저장 무동작(원인 특정: button() type='button' 하드코딩 vs submit 핸들러)
+  ② 레이아웃 4건(헤더 세로 줄바꿈·동작 열 겹침·편집 패널 오버플로·전폭 저장 버튼) — 모두 수정 확인
+- 재검증: npm test 35/35, 1280px 창에서 표·편집 패널 수납, PATCH 발사·행 갱신·성공 상태
+- merge → apply(3 change: Lambda env 자격 4종 + IAM 2액션) → 프로덕션: 실계정 로그인 200,
+  더미 생성→관리자 삭제→S3·갤러리 소멸, 미인증 401
+- 관리자 URL: /admin.html (갤러리에서 링크 미노출, noindex)
+
+### Handoff
+- 권고 잔여: 관리자 비밀번호가 팀 공통 비번과 동일 — 회전 권고 (tfvars 교체+apply)
