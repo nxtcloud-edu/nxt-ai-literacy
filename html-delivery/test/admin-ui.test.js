@@ -15,10 +15,11 @@ test('관리자 HTML은 noindex이며 갤러리에서 링크를 노출하지 않
   assert.equal(index.includes('admin.html'), false);
 });
 
-test('관리자 HTML 스크립트는 렌더링에 innerHTML을 사용하지 않는다', async () => {
+test('관리자 HTML 스크립트는 렌더링에 innerHTML을 쓰지 않고 수정 저장은 submit 버튼이다', async () => {
   const admin = await readFile(path.join(__dirname, '../public/admin.html'), 'utf8');
   assert.equal(admin.includes('innerHTML'), false);
   assert.match(admin, /textContent/);
+  assert.match(admin, /button\('수정 저장','primary','submit'\)/);
 });
 
 test('관리자 비밀번호 해시 스크립트는 stdin 비밀번호를 해시와 salt로 변환한다', () => {
