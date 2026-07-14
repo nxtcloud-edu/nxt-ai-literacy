@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createApp } = require('../server');
-const { LOCAL_REGISTRY, hashPassword, verifyPassword } = require('../registry');
+const { LOCAL_ADMIN_CREDENTIAL, LOCAL_REGISTRY, hashPassword, verifyPassword } = require('../registry');
 
 const LOCAL_DEPLOY_DIR = path.join(__dirname, '../.local-deploy');
 const LOCAL_FEEDBACK_LOG = path.join(__dirname, '../.local-feedback.jsonl');
@@ -13,6 +13,7 @@ function runtimeSecret() { return crypto.randomBytes(18).toString('base64url'); 
 
 async function cleanLocalState() {
   await fs.rm(LOCAL_REGISTRY, { force: true });
+  await fs.rm(LOCAL_ADMIN_CREDENTIAL, { force: true });
   await fs.rm(LOCAL_FEEDBACK_LOG, { force: true });
   await fs.rm(LOCAL_DEPLOY_DIR, { recursive: true, force: true });
 }
@@ -207,6 +208,52 @@ test('관리 API는 미인증 401, 콘텐츠 수정, 비밀번호 재설정, 피
     const versioned = await uploadContent(baseUrl, { ...created.identity, title: nextTitle, secret: newOwnerSecret });
     assert.equal(versioned.response.status, 201);
     assert.equal(versioned.body.version, 2);
+  } finally {
+    console.log = originalLog;
+    await close(server);
+    admin.restore();
+    await cleanLocalState();
+  }
+});
+
+
+test('관리자 비밀번호 변경 API는 전용 로컬 파일에 오버라이드 자격을 저장하고 감사 로그에 secret을 남기지 않는다', async () => {
+  await cleanLocalState();
+  const admin = withAdminEnv();
+  const { server, baseUrl } = await listen(createApp());
+  const logs = [];
+  const originalLog = console.log;
+  console.log = (line) => logs.push(String(line));
+  try {
+    const authenticated = await login(baseUrl, admin.id, admin.secret);
+    const cookie = authenticated.cookie;
+    const nextSecret = runtimeSecret();
+    const changed = await fetch(`${baseUrl}/api/admin/change-password`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ currentPassword: admin.secret, newPassword: nextSecret }),
+    });
+    assert.equal(changed.status, 200);
+    assert.deepEqual(await changed.json(), { ok: true });
+
+    const stat = await fs.stat(LOCAL_ADMIN_CREDENTIAL);
+    assert.equal(stat.mode & 0o777, 0o600);
+    await assert.rejects(fs.stat(LOCAL_REGISTRY), { code: 'ENOENT' });
+    const credential = JSON.parse(await fs.readFile(LOCAL_ADMIN_CREDENTIAL, 'utf8'));
+    assert.equal(credential.contentKey, 'admin#credential');
+    assert.equal(credential.createdAt, 'meta');
+    assert.equal(verifyPassword(nextSecret, credential.passwordHash, credential.salt), true);
+    assert.equal(JSON.stringify(credential).includes(nextSecret), false);
+
+    const oldLogin = await login(baseUrl, admin.id, admin.secret);
+    assert.equal(oldLogin.response.status, 401);
+    const newLogin = await login(baseUrl, admin.id, nextSecret);
+    assert.equal(newLogin.response.status, 200);
+    const audit = logs.map((line) => JSON.parse(line));
+    assert.equal(audit.some((entry) => entry.admin_action === 'change-password' && entry.contentId === null), true);
+    assert.equal(logs.join('\n').includes(nextSecret), false);
+    assert.equal(logs.join('\n').includes(credential.passwordHash), false);
+    assert.equal(logs.join('\n').includes(credential.salt), false);
   } finally {
     console.log = originalLog;
     await close(server);

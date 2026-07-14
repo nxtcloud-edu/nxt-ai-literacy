@@ -5,6 +5,8 @@ const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, DeleteCommand, GetCommand, PutCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
 const LOCAL_REGISTRY = path.join(__dirname, '.local-registry.json');
+const LOCAL_ADMIN_CREDENTIAL = path.join(path.dirname(LOCAL_REGISTRY), '.local-admin-credential.json');
+const ADMIN_CREDENTIAL_KEY = { contentKey: 'admin#credential', createdAt: 'meta' };
 const TABLE_NAME = process.env.FEEDBACK_TABLE;
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
@@ -38,6 +40,30 @@ async function writeLocalRegistry(registry) {
 
 function documentClient() {
   return DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.S3_REGION || 'ap-northeast-2' }));
+}
+
+
+async function getAdminCredential() {
+  if (!TABLE_NAME) {
+    try {
+      const credential = JSON.parse(await fs.readFile(LOCAL_ADMIN_CREDENTIAL, 'utf8'));
+      return credential?.passwordHash && credential?.salt ? { passwordHash: credential.passwordHash, salt: credential.salt } : null;
+    } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+  }
+  const response = await documentClient().send(new GetCommand({ TableName: TABLE_NAME, Key: ADMIN_CREDENTIAL_KEY }));
+  const item = response.Item;
+  return item?.passwordHash && item?.salt ? { passwordHash: item.passwordHash, salt: item.salt } : null;
+}
+
+async function saveAdminCredential({ passwordHash, salt, updatedAt }) {
+  const item = { ...ADMIN_CREDENTIAL_KEY, passwordHash, salt, updatedAt };
+  if (!TABLE_NAME) {
+    await fs.writeFile(LOCAL_ADMIN_CREDENTIAL, `${JSON.stringify(item, null, 2)}
+`, { encoding: 'utf8', mode: 0o600 });
+    await fs.chmod(LOCAL_ADMIN_CREDENTIAL, 0o600);
+    return;
+  }
+  await documentClient().send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
 }
 
 async function listRegistryItems() {
@@ -216,4 +242,4 @@ async function incrementLike(contentId) {
   }
 }
 
-module.exports = { LOCAL_REGISTRY, deleteRegistryItem, findByIdentity, getContent, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };
+module.exports = { ADMIN_CREDENTIAL_KEY, LOCAL_ADMIN_CREDENTIAL, LOCAL_REGISTRY, deleteRegistryItem, findByIdentity, getAdminCredential, getContent, getRegistryItem, hashPassword, incrementLike, listContents, mergeAdminContentFields, mergeVersionFields, newContentId, publicContent, saveAdminCredential, saveRegistryItem, updateContentFields, updateContentPassword, updateRegistryVersion, verifyPassword };

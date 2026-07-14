@@ -7,6 +7,7 @@ html-delivery/.local-deploy/
 html-delivery/uploads.log.jsonl
 html-delivery/.local-feedback.jsonl
 html-delivery/.local-registry.json
+html-delivery/.local-admin-credential.json
 html-delivery/node_modules/
 
 # Terraform local state and plans

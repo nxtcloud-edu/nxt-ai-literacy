@@ -4,6 +4,8 @@ const { clientIp, createSlidingWindowLimiter } = require('./ratelimit');
 
 const ADMIN_UNCONFIGURED_MESSAGE = '관리자 기능이 설정되지 않았습니다.';
 const ADMIN_AUTH_FAILED_MESSAGE = '아이디 또는 비밀번호가 맞지 않아요.';
+const ADMIN_CURRENT_PASSWORD_FAILED_MESSAGE = '현재 비밀번호가 맞지 않아요.';
+const ADMIN_NEW_PASSWORD_INVALID_MESSAGE = '새 비밀번호는 8~72자이고 현재 비밀번호와 달라야 해요.';
 const SESSION_COOKIE_NAME = 'admin_session';
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
 const SESSION_TTL_MS = SESSION_TTL_SECONDS * 1000;
@@ -59,6 +61,12 @@ function adminConfig() {
   return { id: ADMIN_ID, passwordHash: ADMIN_PASSWORD_HASH, salt: ADMIN_PASSWORD_SALT, sessionSecret: SESSION_SECRET };
 }
 
+async function resolveActiveCredential(config, getAdminCredential) {
+  const override = await getAdminCredential();
+  if (!override) return config;
+  return { id: config.id, passwordHash: override.passwordHash, salt: override.salt, sessionSecret: config.sessionSecret };
+}
+
 function sessionCookie(value) {
   const secure = process.env.S3_BUCKET ? '; Secure' : '';
   return `${SESSION_COOKIE_NAME}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_TTL_SECONDS}${secure}`;
@@ -69,7 +77,18 @@ function expiredSessionCookie() {
   return `${SESSION_COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure}`;
 }
 
-function createAdminAuth() {
+function validNewAdminPassword(currentPassword, newPassword) {
+  return typeof newPassword === 'string'
+    && newPassword.length >= 8
+    && newPassword.length <= 72
+    && newPassword !== currentPassword;
+}
+
+function createAdminAuth(deps = {}) {
+  const { getAdminCredential, saveAdminCredential, hashPassword, auditAdminAction = () => {} } = deps;
+  if (typeof getAdminCredential !== 'function') throw new TypeError('getAdminCredential dependency is required');
+  if (typeof saveAdminCredential !== 'function') throw new TypeError('saveAdminCredential dependency is required');
+  if (typeof hashPassword !== 'function') throw new TypeError('hashPassword dependency is required');
   const loginByIp = createSlidingWindowLimiter({ limit: 5, windowMs: 60_000 });
 
   function requireConfigured(_req, res) {
@@ -89,17 +108,41 @@ function createAdminAuth() {
     return next();
   }
 
-  function login(req, res) {
-    const config = requireConfigured(req, res);
-    if (!config) return;
-    if (!loginByIp.consume(clientIp(req))) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요.' });
-    const body = req.body || {};
-    const idMatches = timingSafeStringEqual(body.id, config.id);
-    const passwordMatches = typeof body.password === 'string' && verifyPassword(body.password, config.passwordHash, config.salt);
-    if (!idMatches || !passwordMatches) return res.status(401).json({ error: ADMIN_AUTH_FAILED_MESSAGE });
-    const token = createSessionToken({ secret: config.sessionSecret });
-    res.set('Set-Cookie', sessionCookie(token));
-    return res.json({ ok: true });
+  async function login(req, res, next) {
+    try {
+      const config = requireConfigured(req, res);
+      if (!config) return;
+      if (!loginByIp.consume(clientIp(req))) return res.status(429).json({ error: '잠시 후 다시 시도해 주세요.' });
+      const credential = await resolveActiveCredential(config, getAdminCredential);
+      const body = req.body || {};
+      const idMatches = timingSafeStringEqual(body.id, credential.id);
+      const passwordMatches = typeof body.password === 'string' && verifyPassword(body.password, credential.passwordHash, credential.salt);
+      if (!idMatches || !passwordMatches) return res.status(401).json({ error: ADMIN_AUTH_FAILED_MESSAGE });
+      const token = createSessionToken({ secret: credential.sessionSecret });
+      res.set('Set-Cookie', sessionCookie(token));
+      return res.json({ ok: true });
+    } catch (error) { return next(error); }
+  }
+
+  async function changePassword(req, res, next) {
+    try {
+      const config = requireConfigured(req, res);
+      if (!config) return;
+      const credential = await resolveActiveCredential(config, getAdminCredential);
+      const body = req.body || {};
+      const currentPassword = body.currentPassword;
+      const newPassword = body.newPassword;
+      if (typeof currentPassword !== 'string' || !verifyPassword(currentPassword, credential.passwordHash, credential.salt)) {
+        return res.status(401).json({ error: ADMIN_CURRENT_PASSWORD_FAILED_MESSAGE });
+      }
+      if (!validNewAdminPassword(currentPassword, newPassword)) {
+        return res.status(400).json({ error: ADMIN_NEW_PASSWORD_INVALID_MESSAGE });
+      }
+      const nextCredential = { ...hashPassword(newPassword), updatedAt: new Date().toISOString() };
+      await saveAdminCredential(nextCredential);
+      auditAdminAction('change-password', null);
+      return res.json({ ok: true });
+    } catch (error) { return next(error); }
   }
 
   function logout(_req, res) {
@@ -107,7 +150,7 @@ function createAdminAuth() {
     return res.json({ ok: true });
   }
 
-  return { login, logout, requireAdmin };
+  return { changePassword, login, logout, requireAdmin };
 }
 
-module.exports = { ADMIN_AUTH_FAILED_MESSAGE, ADMIN_UNCONFIGURED_MESSAGE, SESSION_COOKIE_NAME, SESSION_TTL_MS, createAdminAuth, createSessionToken, expiredSessionCookie, parseCookies, sessionCookie, timingSafeStringEqual, verifySessionToken };
+module.exports = { ADMIN_AUTH_FAILED_MESSAGE, ADMIN_CURRENT_PASSWORD_FAILED_MESSAGE, ADMIN_NEW_PASSWORD_INVALID_MESSAGE, ADMIN_UNCONFIGURED_MESSAGE, SESSION_COOKIE_NAME, SESSION_TTL_MS, createAdminAuth, createSessionToken, expiredSessionCookie, parseCookies, resolveActiveCredential, sessionCookie, timingSafeStringEqual, validNewAdminPassword, verifySessionToken };
