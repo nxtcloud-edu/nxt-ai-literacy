@@ -1,5 +1,5 @@
 # WO-025: 관리자 UI + infra 배선 (env·IAM)
-상태: 검증 대기
+상태: 완료 (2026-07-14, 검증자 Claude — 반려 2회(submit·레이아웃) 후 실측 전 통과, main 머지)
 작성: Claude (Planner) / 실행: Hermes (Coder)
 워크트리 게이트: `wo/025` 브랜치
 
